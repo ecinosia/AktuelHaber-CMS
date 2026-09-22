@@ -6,6 +6,7 @@ import type { FootballStanding } from "@/types";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { useConfirm } from "@/components/providers/ConfirmProvider";
 
 const EMPTY = { matchweek: 1, position: 1, teamName: "", played: 0, won: 0, drawn: 0, lost: 0, points: 0 };
 
@@ -14,6 +15,7 @@ export default function FootballPage() {
   const [form, setForm] = useState(EMPTY);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const confirmDialog = useConfirm();
 
   function reload() {
     return api.football.list().then((all) => setItems(all.sort((a, b) => a.position - b.position)));
@@ -40,7 +42,7 @@ export default function FootballPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Bu satırı silmek istediğinize emin misiniz?")) {
+    if (!(await confirmDialog("Bu satırı silmek istediğinize emin misiniz?"))) {
       return;
     }
     await api.football.remove(id);
@@ -84,6 +86,7 @@ export default function FootballPage() {
       {loading ? (
         <p className="text-black/60">Yükleniyor...</p>
       ) : (
+        <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-black/10 text-left">
@@ -129,6 +132,7 @@ export default function FootballPage() {
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </main>
   );

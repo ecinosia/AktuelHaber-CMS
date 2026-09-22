@@ -6,6 +6,7 @@ import type { PrayerTime } from "@/types";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { useConfirm } from "@/components/providers/ConfirmProvider";
 
 const today = () => new Date().toISOString().slice(0, 10);
 const EMPTY = { city: "", date: today(), imsak: "", gunes: "", ogle: "", ikindi: "", aksam: "", yatsi: "" };
@@ -14,6 +15,7 @@ export default function PrayerTimesPage() {
   const [items, setItems] = useState<PrayerTime[]>([]);
   const [form, setForm] = useState(EMPTY);
   const [loading, setLoading] = useState(true);
+  const confirmDialog = useConfirm();
 
   function reload() {
     return api.prayerTimes.list().then((all) =>
@@ -33,7 +35,7 @@ export default function PrayerTimesPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Bu kaydı silmek istediğinize emin misiniz?")) {
+    if (!(await confirmDialog("Bu kaydı silmek istediğinize emin misiniz?"))) {
       return;
     }
     await api.prayerTimes.remove(id);
@@ -45,7 +47,7 @@ export default function PrayerTimesPage() {
       <h1 className="mb-6 text-2xl font-bold">Namaz Vakitleri</h1>
 
       <form onSubmit={handleSubmit} className="mb-8 rounded border border-black/10 bg-white p-4">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="Şehir">
             <Input required value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
           </Field>
@@ -66,6 +68,7 @@ export default function PrayerTimesPage() {
       {loading ? (
         <p className="text-black/60">Yükleniyor...</p>
       ) : (
+        <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-black/10 text-left">
@@ -106,6 +109,7 @@ export default function PrayerTimesPage() {
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </main>
   );

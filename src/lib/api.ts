@@ -1,33 +1,43 @@
 import type {
+  ActivityLog,
   AdBanner,
-  AdBannerType,
+  AdminUser,
   Article,
   ArticlePlacement,
   ArticleStatus,
   Author,
   BrandSettings,
   Category,
+  Column,
   Comment,
   CommentStatus,
   ContactMessage,
+  DashboardStats,
   FootballStanding,
   HoroscopeEntry,
   MarketRate,
-  MastheadMember,
+  Masthead,
+  Menu,
   MenuItem,
   MenuLocation,
+  MenuStatus,
   Newspaper,
   Paginated,
   Pharmacy,
+  Popup,
   PrayerTime,
   Session,
   StaticPage,
   Tag,
   Video,
-  WeatherReading,
 } from "@/types";
 
-const API_BASE_URL = process.env.API_BASE_URL ?? "http://localhost:4000";
+// The browser talks to the BE through this app's own /api proxy (see
+// next.config.mjs): same origin, so the session cookie lands on the CMS host and
+// the BE never needs to be publicly reachable. Server-side code (no window) skips
+// the hop and calls the BE's internal address directly.
+const API_BASE_URL =
+  typeof window === "undefined" ? (process.env.API_BASE_URL ?? "http://localhost:4000") : "/api";
 
 export class ApiError extends Error {
   constructor(
@@ -39,11 +49,26 @@ export class ApiError extends Error {
   }
 }
 
+// Nest's default error body is { message: string | string[], error, statusCode }.
+// class-validator failures give an array (one entry per failed field); everything
+// else (ConflictException, NotFoundException, ...) gives a single string.
+async function extractErrorMessage(res: Response, path: string, method?: string): Promise<string> {
+  const fallback = `API request failed: ${method ?? "GET"} ${path} -> ${res.status}`;
+  try {
+    const body = await res.json();
+    if (Array.isArray(body?.message)) return body.message.join(" ");
+    if (typeof body?.message === "string") return body.message;
+    return fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
   const res = await fetch(`${API_BASE_URL}${path}`, { ...options, credentials: "include" });
 
   if (!res.ok) {
-    throw new ApiError(`API request failed: ${options.method ?? "GET"} ${path} -> ${res.status}`, res.status);
+    throw new ApiError(await extractErrorMessage(res, path, options.method), res.status);
   }
   if (res.status === 204) {
     return undefined as T;
@@ -66,12 +91,21 @@ function buildQuery(params: Record<string, string | number | boolean | undefined
   return qs ? `?${qs}` : "";
 }
 
-type MediaUploadKind = "article" | "avatar" | "logo" | "banner";
+export type MenuInput = {
+  name: string;
+  location: MenuLocation;
+  status: MenuStatus;
+  items: { label: string; url: string }[];
+};
+
+export type MediaUploadKind = "article" | "avatar" | "logo" | "banner" | "content" | "newspaper" | "video";
 
 export const api = {
   auth: {
-    login: (username: string, password: string) =>
-      apiFetch<{ email: string; role: string }>("/auth/login", withBody("POST", { username, password })),
+    login: (username: string, password: string, remember = false) =>
+      apiFetch<{ email: string; role: string }>("/auth/login", withBody("POST", { username, password, remember })),
+    forgotPassword: (email: string) =>
+      apiFetch<{ success: boolean }>("/auth/forgot-password", withBody("POST", { email })),
     logout: () => apiFetch<{ success: boolean }>("/auth/logout", { method: "POST" }),
     me: () => apiFetch<Session>("/auth/me"),
   },
@@ -90,6 +124,20 @@ export const api = {
       }
       return res.json() as Promise<Record<string, string>>;
     },
+    uploadVideo: async (file: File): Promise<string> => {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch(`${API_BASE_URL}/media/upload-video`, { method: "POST", credentials: "include", body: formData });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new ApiError(body?.message ?? `Upload failed -> ${res.status}`, res.status);
+      }
+      return ((await res.json()) as { url: string }).url;
+    },
+    ingestVideo: (url: string) => apiFetch<{ url: string }>("/media/ingest-video", withBody("POST", { url })).then((r) => r.url),
+    // Server re-fetches the URL and stores it under a fresh UUID (SSRF-guarded).
+    ingest: (url: string, kind: MediaUploadKind = "article") =>
+      apiFetch<Record<string, string>>("/media/ingest", withBody("POST", { url, kind })),
   },
 
   brand: {
@@ -98,19 +146,23 @@ export const api = {
       apiFetch<BrandSettings>("/brand", withBody("PATCH", dto)),
   },
 
+  dashboard: {
+    stats: () => apiFetch<DashboardStats>("/dashboard/stats"),
+  },
+
   menu: {
-    list: (location?: MenuLocation) => apiFetch<MenuItem[]>(`/menu${buildQuery({ location })}`),
-    create: (dto: { label: string; url: string; position: number; location: MenuLocation }) =>
-      apiFetch<MenuItem>("/menu", withBody("POST", dto)),
-    update: (id: string, dto: Partial<Omit<MenuItem, "id">>) =>
-      apiFetch<MenuItem>(`/menu/${id}`, withBody("PATCH", dto)),
-    remove: (id: string) => apiFetch<void>(`/menu/${id}`, { method: "DELETE" }),
+    list: () => apiFetch<Menu[]>("/menus"),
+    get: (id: string) => apiFetch<Menu & { items: MenuItem[] }>(`/menus/${id}`),
+    create: (dto: MenuInput) => apiFetch<Menu>("/menus", withBody("POST", dto)),
+    update: (id: string, dto: Partial<MenuInput>) => apiFetch<Menu>(`/menus/${id}`, withBody("PATCH", dto)),
+    remove: (id: string) => apiFetch<void>(`/menus/${id}`, { method: "DELETE" }),
   },
 
   categories: {
     list: () => apiFetch<Category[]>("/categories"),
-    create: (dto: { slug: string; name: string }) => apiFetch<Category>("/categories", withBody("POST", dto)),
-    update: (id: string, dto: Partial<{ slug: string; name: string }>) =>
+    create: (dto: { slug: string; name: string; color?: string; metaDescription?: string }) =>
+      apiFetch<Category>("/categories", withBody("POST", dto)),
+    update: (id: string, dto: Partial<{ slug: string; name: string; color: string; metaDescription: string }>) =>
       apiFetch<Category>(`/categories/${id}`, withBody("PATCH", dto)),
     remove: (id: string) => apiFetch<void>(`/categories/${id}`, { method: "DELETE" }),
   },
@@ -151,23 +203,37 @@ export const api = {
     reject: (id: string) => apiFetch<Article>(`/articles/${id}/reject`, { method: "POST" }),
   },
 
+  columns: {
+    adminList: (params: { status?: ArticleStatus; authorId?: string; page?: number; pageSize?: number } = {}) =>
+      apiFetch<Paginated<Column>>(`/columns/admin${buildQuery(params)}`),
+    byId: (id: string) => apiFetch<Column>(`/columns/id/${id}`),
+    bySlug: (slug: string) => apiFetch<Column>(`/columns/slug/${slug}`),
+    create: (dto: ColumnWritePayload) => apiFetch<Column>("/columns", withBody("POST", dto)),
+    update: (id: string, dto: Partial<ColumnWritePayload>) =>
+      apiFetch<Column>(`/columns/${id}`, withBody("PATCH", dto)),
+    remove: (id: string) => apiFetch<void>(`/columns/${id}`, { method: "DELETE" }),
+  },
+
   comments: {
     list: (params: { articleId?: string; status?: CommentStatus; page?: number; pageSize?: number } = {}) =>
       apiFetch<Paginated<Comment>>(`/comments${buildQuery(params)}`),
     approve: (id: string) => apiFetch<Comment>(`/comments/${id}/approve`, { method: "POST" }),
     reject: (id: string) => apiFetch<Comment>(`/comments/${id}/reject`, { method: "POST" }),
     markSpam: (id: string) => apiFetch<Comment>(`/comments/${id}/spam`, { method: "POST" }),
+    remove: (id: string) => apiFetch<void>(`/comments/${id}`, { method: "DELETE" }),
   },
 
   ads: {
     adminList: () => apiFetch<AdBanner[]>("/ads/admin"),
     create: (dto: {
-      slot: string;
-      type?: AdBannerType;
+      slots: string[];
       imageUrl?: string;
       linkUrl?: string;
-      adUnitCode?: string;
       active?: boolean;
+      name: string;
+      company: string;
+      startsAt: string;
+      endsAt: string;
     }) => apiFetch<AdBanner>("/ads", withBody("POST", dto)),
     update: (id: string, dto: Partial<Omit<AdBanner, "id">>) =>
       apiFetch<AdBanner>(`/ads/${id}`, withBody("PATCH", dto)),
@@ -176,37 +242,27 @@ export const api = {
 
   pages: {
     list: () => apiFetch<StaticPage[]>("/pages"),
-    create: (dto: { slug: string; title: string; content: string }) =>
-      apiFetch<StaticPage>("/pages", withBody("POST", dto)),
-    update: (id: string, dto: Partial<{ slug: string; title: string; content: string }>) =>
+    update: (id: string, dto: Partial<{ title: string; content: string; data: Record<string, unknown> }>) =>
       apiFetch<StaticPage>(`/pages/${id}`, withBody("PATCH", dto)),
-    remove: (id: string) => apiFetch<void>(`/pages/${id}`, { method: "DELETE" }),
   },
 
   masthead: {
-    list: () => apiFetch<MastheadMember[]>("/masthead"),
-    create: (dto: { name: string; title: string; order?: number }) =>
-      apiFetch<MastheadMember>("/masthead", withBody("POST", dto)),
-    update: (id: string, dto: Partial<{ name: string; title: string; order: number }>) =>
-      apiFetch<MastheadMember>(`/masthead/${id}`, withBody("PATCH", dto)),
-    remove: (id: string) => apiFetch<void>(`/masthead/${id}`, { method: "DELETE" }),
-    reorder: (ids: string[]) => apiFetch<MastheadMember[]>("/masthead/reorder", withBody("PATCH", { ids })),
+    get: () => apiFetch<Masthead>("/masthead"),
+    update: (dto: Masthead) => apiFetch<Masthead>("/masthead", withBody("PATCH", dto)),
   },
 
   contact: {
-    list: (params: { page?: number; pageSize?: number } = {}) =>
-      apiFetch<Paginated<ContactMessage>>(`/contact${buildQuery(params)}`),
+    list: (params: { page?: number; pageSize?: number; q?: string } = {}) =>
+      apiFetch<Paginated<ContactMessage> & { unread: number }>(`/contact${buildQuery(params)}`),
+    markRead: (id: string) => apiFetch<ContactMessage>(`/contact/${id}/read`, { method: "PATCH" }),
+    markUnread: (id: string) => apiFetch<ContactMessage>(`/contact/${id}/unread`, { method: "PATCH" }),
+    remove: (id: string) => apiFetch<void>(`/contact/${id}`, { method: "DELETE" }),
   },
 
   marketData: {
     list: () => apiFetch<MarketRate[]>("/market-data"),
     override: (symbol: string, dto: { label?: string; value: number; changePercent?: number }) =>
       apiFetch<MarketRate>(`/market-data/${symbol}`, withBody("PATCH", dto)),
-  },
-
-  weather: {
-    get: () => apiFetch<WeatherReading | null>("/weather"),
-    override: (dto: { tempC: number; city?: string }) => apiFetch<WeatherReading>("/weather", withBody("PATCH", dto)),
   },
 
   horoscope: {
@@ -250,12 +306,9 @@ export const api = {
   },
 
   newspapers: {
-    list: (date?: string) => apiFetch<Newspaper[]>(`/newspapers${buildQuery({ date })}`),
-    create: (dto: { name: string; coverImage: string; date: string }) =>
-      apiFetch<Newspaper>("/newspapers", withBody("POST", dto)),
-    update: (id: string, dto: Partial<{ name: string; coverImage: string; date: string }>) =>
-      apiFetch<Newspaper>(`/newspapers/${id}`, withBody("PATCH", dto)),
-    remove: (id: string) => apiFetch<void>(`/newspapers/${id}`, { method: "DELETE" }),
+    list: () => apiFetch<Newspaper[]>("/newspapers/admin"),
+    setActive: (id: string, active: boolean) =>
+      apiFetch<Newspaper>(`/newspapers/${id}/active`, withBody("PATCH", { active })),
   },
 
   football: {
@@ -265,6 +318,31 @@ export const api = {
       apiFetch<FootballStanding>(`/football/${id}`, withBody("PATCH", dto)),
     remove: (id: string) => apiFetch<void>(`/football/${id}`, { method: "DELETE" }),
   },
+
+  users: {
+    list: () => apiFetch<AdminUser[]>("/users"),
+    findOne: (id: string) => apiFetch<AdminUser>(`/users/${id}`),
+    create: (dto: { email: string; firstName: string; lastName: string; role: string; password: string; enabled?: boolean }) =>
+      apiFetch<AdminUser>("/users", withBody("POST", dto)),
+    update: (id: string, dto: Partial<{ email: string; firstName: string; lastName: string; role: string; enabled: boolean }>) =>
+      apiFetch<AdminUser>(`/users/${id}`, withBody("PATCH", dto)),
+    remove: (id: string) => apiFetch<void>(`/users/${id}`, { method: "DELETE" }),
+    resetPassword: (id: string, password: string) =>
+      apiFetch<void>(`/users/${id}/reset-password`, withBody("POST", { password })),
+  },
+
+  logs: {
+    list: (params: { page?: number; pageSize?: number; entity?: string; action?: string; q?: string; from?: string; to?: string; sortBy?: string; order?: string } = {}) =>
+      apiFetch<Paginated<ActivityLog>>(`/logs${buildQuery(params)}`),
+  },
+
+  popup: {
+    list: () => apiFetch<Popup[]>("/popup"),
+    create: (dto: Partial<Omit<Popup, "id" | "createdAt">>) => apiFetch<Popup>("/popup", withBody("POST", dto)),
+    update: (id: string, dto: Partial<Omit<Popup, "id" | "createdAt">>) =>
+      apiFetch<Popup>(`/popup/${id}`, withBody("PATCH", dto)),
+    remove: (id: string) => apiFetch<void>(`/popup/${id}`, { method: "DELETE" }),
+  },
 };
 
 export type ArticleWritePayload = {
@@ -273,6 +351,7 @@ export type ArticleWritePayload = {
   spot: string;
   content: string;
   coverImageUrl?: string;
+  coverImageCardUrl?: string;
   coverImageAlt?: string;
   source?: string;
   isBreaking?: boolean;
@@ -280,12 +359,30 @@ export type ArticleWritePayload = {
   isSponsored?: boolean;
   noIndex?: boolean;
   canonicalUrl?: string;
+  metaTitle?: string;
+  metaDescription?: string;
+  commentsEnabled?: boolean;
+  videoUrl?: string;
   status?: ArticleStatus;
   scheduledAt?: string;
   placement?: ArticlePlacement;
-  placementOrder?: number;
   pinnedRelatedArticleIds?: string[];
   categoryId: string;
   authorId: string;
   tagIds?: string[];
+};
+
+export type ColumnWritePayload = {
+  slug: string;
+  title: string;
+  spot?: string;
+  content: string;
+  coverImageUrl?: string;
+  coverImageCardUrl?: string;
+  coverImageAlt?: string;
+  noIndex?: boolean;
+  commentsEnabled?: boolean;
+  status?: ArticleStatus;
+  scheduledAt?: string;
+  authorId: string;
 };

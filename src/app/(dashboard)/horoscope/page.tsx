@@ -7,6 +7,7 @@ import { ZODIAC_SIGNS } from "@/lib/zodiac";
 import { Field } from "@/components/ui/Field";
 import { Input, Textarea, Select } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { useConfirm } from "@/components/providers/ConfirmProvider";
 
 const today = () => new Date().toISOString().slice(0, 10);
 const EMPTY: { sign: string; date: string; text: string } = { sign: ZODIAC_SIGNS[0].slug, date: today(), text: "" };
@@ -15,6 +16,7 @@ export default function HoroscopePage() {
   const [items, setItems] = useState<HoroscopeEntry[]>([]);
   const [form, setForm] = useState(EMPTY);
   const [loading, setLoading] = useState(true);
+  const confirmDialog = useConfirm();
 
   function reload() {
     return api.horoscope.list().then((all) =>
@@ -34,7 +36,7 @@ export default function HoroscopePage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Bu yorumu silmek istediğinize emin misiniz?")) {
+    if (!(await confirmDialog("Bu yorumu silmek istediğinize emin misiniz?"))) {
       return;
     }
     await api.horoscope.remove(id);
@@ -46,7 +48,7 @@ export default function HoroscopePage() {
       <h1 className="mb-6 text-2xl font-bold">Burç Yorumları</h1>
 
       <form onSubmit={handleSubmit} className="mb-8 rounded border border-black/10 bg-white p-4">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="Burç">
             <Select value={form.sign} onChange={(e) => setForm({ ...form, sign: e.target.value })}>
               {ZODIAC_SIGNS.map((sign) => (
@@ -71,7 +73,7 @@ export default function HoroscopePage() {
       ) : (
         <ul className="flex flex-col gap-2">
           {items.map((entry) => (
-            <li key={entry.id} className="flex items-start justify-between rounded border border-black/10 bg-white p-3 text-sm">
+            <li key={entry.id} className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 rounded border border-black/10 bg-white p-3 text-sm">
               <div>
                 <p className="font-semibold">
                   {ZODIAC_SIGNS.find((s) => s.slug === entry.sign)?.name ?? entry.sign} —{" "}

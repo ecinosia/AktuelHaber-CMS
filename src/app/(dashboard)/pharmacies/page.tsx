@@ -6,6 +6,7 @@ import type { Pharmacy } from "@/types";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { useConfirm } from "@/components/providers/ConfirmProvider";
 
 const today = () => new Date().toISOString().slice(0, 10);
 const EMPTY = { name: "", district: "", address: "", phone: "", date: today() };
@@ -15,6 +16,7 @@ export default function PharmaciesPage() {
   const [form, setForm] = useState(EMPTY);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const confirmDialog = useConfirm();
 
   function reload() {
     return api.pharmacies.list().then(setItems);
@@ -37,7 +39,7 @@ export default function PharmaciesPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Bu eczaneyi silmek istediğinize emin misiniz?")) {
+    if (!(await confirmDialog("Bu eczaneyi silmek istediğinize emin misiniz?"))) {
       return;
     }
     await api.pharmacies.remove(id);
@@ -49,7 +51,7 @@ export default function PharmaciesPage() {
       <h1 className="mb-6 text-2xl font-bold">Nöbetçi Eczaneler</h1>
 
       <form onSubmit={handleSubmit} className="mb-8 rounded border border-black/10 bg-white p-4">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="Eczane Adı">
             <Input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           </Field>
@@ -86,6 +88,7 @@ export default function PharmaciesPage() {
       {loading ? (
         <p className="text-black/60">Yükleniyor...</p>
       ) : (
+        <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-black/10 text-left">
@@ -126,6 +129,7 @@ export default function PharmaciesPage() {
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </main>
   );

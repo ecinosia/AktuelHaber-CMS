@@ -7,12 +7,14 @@ export type AuthorPublishType = "DIRECT" | "REQUIRES_APPROVAL";
 export type AuthorStatus = "ACTIVE" | "INACTIVE";
 export type CommentStatus = "PENDING" | "APPROVED" | "REJECTED" | "SPAM";
 export type MenuLocation = "MAIN" | "FOOTER";
-export type AdBannerType = "STATIC" | "ADSENSE";
 
 export type Category = {
   id: string;
   slug: string;
   name: string;
+  color: string | null;
+  metaDescription: string | null;
+  legacySourceId: string | null;
   createdAt: string;
 };
 
@@ -28,8 +30,11 @@ export type Author = {
   instagramUrl: string | null;
   avatarUrl: string | null;
   bio: string | null;
+  youtubeUrl: string | null;
   publishType: AuthorPublishType;
   status: AuthorStatus;
+  legacySourceId: string | null;
+  articleCount?: number; // list endpoint only
   createdAt: string;
 };
 
@@ -42,22 +47,28 @@ export type Tag = {
 
 export type Comment = {
   id: string;
-  articleId: string;
+  articleId: string | null;
+  columnId?: string | null;
   authorName: string;
+  email: string | null;
   content: string;
   status: CommentStatus;
   createdAt: string;
-  article?: { id: string; title: string; slug: string };
+  article?: { id: string; title: string; slug: string; legacyPath: string | null } | null;
+  column?: { id: string; title: string; slug: string; legacyPath: string | null; author: { slug: string } } | null;
 };
 
 export type Article = {
   id: string;
   slug: string;
+  legacyPath: string | null;
+  legacySourceId: string | null;
   previousSlugs: string[];
   title: string;
   spot: string;
   content: string;
   coverImageUrl: string | null;
+  coverImageCardUrl: string | null;
   coverImageAlt: string | null;
   source: string | null;
   isBreaking: boolean;
@@ -65,11 +76,14 @@ export type Article = {
   isSponsored: boolean;
   noIndex: boolean;
   canonicalUrl: string | null;
+  metaTitle: string | null;
+  metaDescription: string | null;
+  commentsEnabled: boolean;
+  videoUrl: string | null;
   status: ArticleStatus;
   scheduledAt: string | null;
   publishedAt: string | null;
   placement: ArticlePlacement;
-  placementOrder: number | null;
   viewCount: number;
   pinnedRelatedArticleIds: string[];
   categoryId: string;
@@ -81,12 +95,52 @@ export type Article = {
   updatedAt: string;
 };
 
+export type Column = {
+  id: string;
+  slug: string;
+  legacyPath: string | null;
+  legacySourceId: string | null;
+  title: string;
+  spot: string | null;
+  content: string;
+  coverImageUrl: string | null;
+  coverImageCardUrl: string | null;
+  coverImageAlt: string | null;
+  noIndex: boolean;
+  commentsEnabled: boolean;
+  status: ArticleStatus;
+  scheduledAt: string | null;
+  publishedAt: string | null;
+  viewCount: number;
+  authorId: string;
+  author: Author;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type Paginated<T> = { items: T[]; total: number; page: number; pageSize: number };
+
+export type DashboardStats = {
+  todayArticles: number;
+  totalArticles: number;
+  todayComments: number;
+  totalComments: number;
+  activeAds: number;
+  pendingReviewArticles: number;
+  pendingComments: number;
+  unreadContactMessages: number;
+  latestArticles: Article[];
+  pendingCommentsList: Comment[];
+  mostViewedArticles: Article[];
+};
 
 export type BrandSettings = {
   id: number;
   name: string;
   logoUrl: string;
+  logoDarkUrl: string | null;
+  faviconUrl: string | null;
+  ogImageUrl: string | null;
   description: string;
   email: string;
   phone: string;
@@ -100,6 +154,7 @@ export type BrandSettings = {
   accentColor: string;
   language: string;
   weatherCity: string | null;
+  mapEmbedUrl: string | null;
   adsTxtContent: string | null;
   updatedAt: string;
 };
@@ -109,7 +164,18 @@ export type MenuItem = {
   label: string;
   url: string;
   position: number;
+};
+
+export type MenuStatus = "ACTIVE" | "INACTIVE";
+
+export type Menu = {
+  id: string;
+  name: string;
   location: MenuLocation;
+  status: MenuStatus;
+  createdAt: string;
+  items?: MenuItem[];
+  _count?: { items: number };
 };
 
 export type StaticPage = {
@@ -117,14 +183,33 @@ export type StaticPage = {
   slug: string;
   title: string;
   content: string;
+  data?: Record<string, unknown> | null;
   updatedAt: string;
 };
 
-export type MastheadMember = {
-  id: string;
-  name: string;
-  title: string;
-  order: number;
+export type Masthead = {
+  companyName?: string | null;
+  foundedYear?: string | null;
+  address?: string | null;
+  phone?: string | null;
+  fax?: string | null;
+  email?: string | null;
+  website?: string | null;
+  tradeRegistryNo?: string | null;
+  taxOffice?: string | null;
+  taxNo?: string | null;
+  mersisNo?: string | null;
+  kepAddress?: string | null;
+  owner?: string | null;
+  generalCoordinator?: string | null;
+  editorInChief?: string | null;
+  newsEditor?: string | null;
+  softwareDevelopment?: string | null;
+  legalAdvisor?: string | null;
+  responsibleEditor?: string | null;
+  hostingProvider?: string | null;
+  domainProvider?: string | null;
+  otherSites?: string | null;
 };
 
 export type ContactMessage = {
@@ -132,6 +217,7 @@ export type ContactMessage = {
   name: string;
   email: string;
   message: string;
+  isRead: boolean;
   createdAt: string;
 };
 
@@ -176,6 +262,7 @@ export type Newspaper = {
   name: string;
   coverImage: string;
   date: string;
+  active: boolean;
 };
 
 export type FootballStanding = {
@@ -192,12 +279,14 @@ export type FootballStanding = {
 
 export type AdBanner = {
   id: string;
-  slot: string;
-  type: AdBannerType;
+  name: string;
+  company: string;
+  slots: string[];
   imageUrl: string | null;
   linkUrl: string | null;
-  adUnitCode: string | null;
   active: boolean;
+  startsAt: string;
+  endsAt: string;
 };
 
 export type MarketRate = {
@@ -209,14 +298,47 @@ export type MarketRate = {
   updatedAt: string;
 };
 
-export type WeatherReading = {
-  id: number;
-  city: string;
-  tempC: number;
-  updatedAt: string;
-};
-
 export type Session = {
   email: string;
   role: string;
+};
+
+export type AdminUser = {
+  id: string;
+  username: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  enabled: boolean;
+  realmRoles: string[];
+  createdTimestamp: number;
+};
+
+export type ActivityLog = {
+  id: string;
+  action: string;
+  entity: string;
+  entityId: string | null;
+  detail: string | null;
+  changes: Record<string, { label: string; from?: unknown; to: unknown }> | null;
+  actorEmail: string | null;
+  actorName: string | null;
+  createdAt: string;
+};
+
+export type PopupStatus = "ACTIVE" | "INACTIVE";
+
+export type Popup = {
+  id: string;
+  title: string;
+  companyName: string | null;
+  imageUrl: string | null;
+  linkUrl: string | null;
+  content: string | null;
+  displayDelay: number;
+  displayOnce: boolean;
+  status: PopupStatus;
+  startDate: string | null;
+  endDate: string | null;
+  createdAt: string;
 };

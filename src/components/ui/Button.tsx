@@ -1,9 +1,14 @@
-type Variant = "primary" | "secondary" | "danger";
+type Variant = "primary" | "secondary" | "danger" | "ghost";
 
 const VARIANT_CLASSES: Record<Variant, string> = {
-  primary: "bg-black text-white hover:bg-black/80",
-  secondary: "border border-black/20 text-black hover:bg-black/5",
-  danger: "bg-red-600 text-white hover:bg-red-700",
+  primary:
+    "bg-primary text-white hover:bg-primary-hover shadow-sm",
+  secondary:
+    "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 shadow-sm",
+  danger:
+    "bg-red-500 text-white hover:bg-red-600 shadow-sm",
+  ghost:
+    "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
 };
 
 export function Button({
@@ -14,7 +19,7 @@ export function Button({
   return (
     <button
       {...props}
-      className={`rounded px-4 py-2 text-sm font-medium disabled:opacity-50 ${VARIANT_CLASSES[variant]} ${className}`}
+      className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${VARIANT_CLASSES[variant]} ${className}`}
     />
   );
 }

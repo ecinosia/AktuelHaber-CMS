@@ -1,130 +1,129 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Loader2 } from "lucide-react";
 import { api } from "@/lib/api";
-import type { MastheadMember } from "@/types";
-import { Field } from "@/components/ui/Field";
-import { Input } from "@/components/ui/Input";
-import { Button } from "@/components/ui/Button";
+import type { Masthead } from "@/types";
+import { CmsCard, CmsField, CmsInput, CmsTextarea } from "@/components/ui/CmsCard";
+import { PageContainer } from "@/components/ui/PageContainer";
 
-const EMPTY = { name: "", title: "" };
+type Key = keyof Masthead;
+type FieldDef = [key: Key, label: string, kind?: "textarea"];
 
-export default function MastheadPage() {
-  const [items, setItems] = useState<MastheadMember[]>([]);
-  const [form, setForm] = useState(EMPTY);
-  const [editingId, setEditingId] = useState<string | null>(null);
+const SECTIONS: { title: string; fields: FieldDef[] }[] = [
+  {
+    title: "Şirket Bilgileri",
+    fields: [
+      ["companyName", "Şirket Adı"], ["foundedYear", "Kuruluş Yılı"], ["address", "Adres"],
+      ["phone", "Telefon"], ["fax", "Fax"], ["email", "E-posta"], ["website", "Website"],
+    ],
+  },
+  {
+    title: "Resmi Bilgiler",
+    fields: [
+      ["tradeRegistryNo", "Ticaret Sicil No"], ["taxOffice", "Vergi Dairesi"], ["taxNo", "Vergi No"],
+      ["mersisNo", "Mersis No"], ["kepAddress", "Elektronik Tebligat Adresi"],
+    ],
+  },
+  {
+    title: "Kadro",
+    fields: [
+      ["owner", "İmtiyaz Sahibi"], ["generalCoordinator", "Genel Koordinatör"],
+      ["editorInChief", "Genel Yayın Yönetmeni"], ["newsEditor", "Haber Müdürü"],
+      ["softwareDevelopment", "Yazılım Geliştirme"], ["legalAdvisor", "Hukuk Danışmanı"],
+      ["responsibleEditor", "Sorumlu Editör"],
+    ],
+  },
+  {
+    title: "Altyapı",
+    fields: [["hostingProvider", "Hosting Sağlayıcı"], ["domainProvider", "Alan Adı Sağlayıcı"]],
+  },
+  {
+    title: "Diğer Siteler",
+    fields: [["otherSites", "Bünyesindeki Diğer Siteler (her satıra bir site)", "textarea"]],
+  },
+];
+
+export default function KunyePage() {
+  const [form, setForm] = useState<Masthead>({});
   const [loading, setLoading] = useState(true);
-
-  function reload() {
-    return api.masthead.list().then((all) => setItems(all.sort((a, b) => a.order - b.order)));
-  }
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    reload().finally(() => setLoading(false));
+    api.masthead.get().then(setForm).finally(() => setLoading(false));
   }, []);
 
-  async function handleSubmit(event: React.FormEvent) {
-    event.preventDefault();
-    if (editingId) {
-      await api.masthead.update(editingId, form);
-    } else {
-      await api.masthead.create(form);
-    }
-    setForm(EMPTY);
-    setEditingId(null);
-    await reload();
+  function set(key: Key, value: string) {
+    setForm((prev) => ({ ...prev, [key]: value }));
+    setSaved(false);
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm("Bu kişiyi silmek istediğinize emin misiniz?")) {
-      return;
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+    try {
+      setForm(await api.masthead.update(form));
+      setSaved(true);
+    } catch {
+      setError("Künye kaydedilemedi.");
+    } finally {
+      setSaving(false);
     }
-    await api.masthead.remove(id);
-    await reload();
   }
 
-  async function move(index: number, direction: -1 | 1) {
-    const targetIndex = index + direction;
-    if (targetIndex < 0 || targetIndex >= items.length) {
-      return;
-    }
-    const reordered = [...items];
-    [reordered[index], reordered[targetIndex]] = [reordered[targetIndex], reordered[index]];
-    setItems(reordered);
-    await api.masthead.reorder(reordered.map((item) => item.id));
-    await reload();
-  }
+  if (loading) return <PageContainer><div className="h-10 rounded-lg bg-surface animate-pulse" /></PageContainer>;
 
   return (
-    <main className="max-w-2xl">
-      <h1 className="mb-6 text-2xl font-bold">Künye</h1>
+    <PageContainer>
+      <h1 className="m-0 mb-5 text-[26px] font-black font-archivo text-ink">Künye</h1>
 
-      <form onSubmit={handleSubmit} className="mb-8 rounded border border-black/10 bg-white p-4">
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Ad Soyad">
-            <Input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-          </Field>
-          <Field label="Ünvan">
-            <Input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-          </Field>
-        </div>
-        <div className="flex gap-2">
-          <Button type="submit">{editingId ? "Güncelle" : "Ekle"}</Button>
-          {editingId && (
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => {
-                setEditingId(null);
-                setForm(EMPTY);
-              }}
+      <form onSubmit={handleSubmit}>
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-5">
+          <div className="flex flex-col gap-4">
+            {SECTIONS.map((section) => (
+              <CmsCard key={section.title} title={section.title}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {section.fields.map(([key, label, kind]) => (
+                    <div key={key} className={kind === "textarea" || key === "address" ? "sm:col-span-2" : undefined}>
+                      <CmsField label={label}>
+                        {kind === "textarea" ? (
+                          <CmsTextarea rows={5} value={form[key] ?? ""} onChange={(e) => set(key, e.target.value)} />
+                        ) : (
+                          <CmsInput value={form[key] ?? ""} onChange={(e) => set(key, e.target.value)} />
+                        )}
+                      </CmsField>
+                    </div>
+                  ))}
+                </div>
+              </CmsCard>
+            ))}
+          </div>
+
+          <div className="flex flex-col gap-4">
+            {error && (
+              <div className="text-down text-[13px] bg-down-bg border border-down/20 rounded-md px-4 py-3" style={{ fontFamily: "var(--font-public-sans)" }}>
+                {error}
+              </div>
+            )}
+            {saved && (
+              <div className="text-up text-[13px] bg-up-bg border border-up/20 rounded-md px-4 py-3" style={{ fontFamily: "var(--font-public-sans)" }}>
+                Künye kaydedildi.
+              </div>
+            )}
+            <button
+              type="submit"
+              disabled={saving}
+              className="w-full flex items-center justify-center gap-2 bg-primary text-white text-[13.5px] font-extrabold font-archivo py-3 rounded-md hover:bg-primary-hover transition-colors disabled:opacity-60 cursor-pointer"
             >
-              Vazgeç
-            </Button>
-          )}
+              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+              {saving ? "Kaydediliyor..." : "Kaydet"}
+            </button>
+          </div>
         </div>
       </form>
-
-      {loading ? (
-        <p className="text-black/60">Yükleniyor...</p>
-      ) : (
-        <ul className="flex flex-col gap-2">
-          {items.map((member, index) => (
-            <li key={member.id} className="flex items-center justify-between rounded border border-black/10 bg-white p-3">
-              <div>
-                <span className="font-semibold">{member.name}</span>
-                <span className="ml-2 text-sm text-black/50">{member.title}</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <button type="button" onClick={() => move(index, -1)} disabled={index === 0} className="disabled:opacity-30">
-                  ↑
-                </button>
-                <button
-                  type="button"
-                  onClick={() => move(index, 1)}
-                  disabled={index === items.length - 1}
-                  className="disabled:opacity-30"
-                >
-                  ↓
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingId(member.id);
-                    setForm({ name: member.name, title: member.title });
-                  }}
-                  className="text-black/60 hover:text-black"
-                >
-                  Düzenle
-                </button>
-                <button type="button" onClick={() => handleDelete(member.id)} className="text-red-600">
-                  Sil
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-    </main>
+    </PageContainer>
   );
 }

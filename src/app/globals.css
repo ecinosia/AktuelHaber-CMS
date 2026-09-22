@@ -1,3 +1,79 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --brand-primary: #C6172E;
+  --brand-primary-hover: #a81227;
+  --brand-primary-light: oklch(0.96 0.03 25);
+  --brand-primary-muted: oklch(0.92 0.04 25);
+
+  /* Legacy aliases used in existing components */
+  --color-primary: var(--brand-primary);
+  --color-primary-hover: var(--brand-primary-hover);
+  --color-primary-light: var(--brand-primary-light);
+  --color-primary-muted: var(--brand-primary-muted);
+
+  /* CSS var for design-export inline styles */
+  --brand: var(--brand-primary);
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    @apply bg-page text-ink antialiased;
+    font-family: var(--font-public-sans), 'Public Sans', sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-archivo), 'Archivo', sans-serif;
+    @apply font-bold tracking-tight;
+  }
+}
+
+/* Shared field styles */
+.cms-input {
+  @apply w-full rounded-md border border-line-strong px-3 py-2.5 text-sm text-ink placeholder-muted-2
+         focus:border-primary focus:outline-none focus:ring-2 transition-colors;
+  font-family: var(--font-public-sans), 'Public Sans', sans-serif;
+}
+.cms-input:focus {
+  --tw-ring-color: color-mix(in srgb, var(--brand-primary) 30%, transparent);
+}
+
+/* Applied alongside .cms-input when a field failed validation — must stay
+   after .cms-input in source order so its border-color wins the cascade. */
+.cms-input-error {
+  @apply border-down;
+}
+
+.cms-label {
+  @apply block mb-1.5 text-xs font-bold text-body;
+  font-family: var(--font-archivo), 'Archivo', sans-serif;
+}
+
+/* Tiptap editor */
+.tiptap-editor .ProseMirror {
+  @apply min-h-[320px] px-4 py-3 outline-none text-sm leading-relaxed text-ink;
+  font-family: var(--font-public-sans), 'Public Sans', sans-serif;
+}
+
+.tiptap-editor .ProseMirror p { @apply mb-3; }
+.tiptap-editor .ProseMirror h1 { @apply text-2xl font-bold mb-3 mt-5; }
+.tiptap-editor .ProseMirror h2 { @apply text-xl font-semibold mb-3 mt-4; }
+.tiptap-editor .ProseMirror h3 { @apply text-lg font-semibold mb-2 mt-4; }
+.tiptap-editor .ProseMirror ul { @apply list-disc pl-5 mb-3 space-y-1; }
+.tiptap-editor .ProseMirror ol { @apply list-decimal pl-5 mb-3 space-y-1; }
+.tiptap-editor .ProseMirror blockquote {
+  @apply border-l-4 border-line-strong pl-4 text-muted italic my-3;
+}
+.tiptap-editor .ProseMirror a { @apply text-primary underline underline-offset-2; }
+.tiptap-editor .ProseMirror mark { @apply bg-yellow-200 rounded px-0.5; }
+.tiptap-editor .ProseMirror strong { @apply font-semibold; }
+.tiptap-editor .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  @apply text-muted-2 pointer-events-none float-left h-0;
+}

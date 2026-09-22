@@ -1,8 +1,17 @@
-export function Field({ label, children }: { label: string; children: React.ReactNode }) {
+export function Field({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <label className="mb-3 block text-sm">
-      <span className="mb-1 block font-medium text-black/70">{label}</span>
+    <div className="mb-4">
+      <label className="mb-1.5 block text-sm font-medium text-gray-700">{label}</label>
+      {hint && <p className="mb-1.5 text-xs text-gray-500">{hint}</p>}
       {children}
-    </label>
+    </div>
   );
 }
