@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Save, Loader2, AlertCircle } from "lucide-react";
@@ -249,12 +250,12 @@ export function ColumnForm({ column }: { column?: Column }) {
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               {saving ? "Kaydediliyor..." : column ? "Güncelle" : "Kaydet"}
             </button>
-            <a
+            <Link
               href="/columns"
               className="w-full block text-center bg-surface text-body text-[13.5px] font-extrabold font-archivo py-3 rounded-md border border-line-strong hover:bg-page transition-colors"
             >
               İptal
-            </a>
+            </Link>
           </div>
         </div>
       </div>

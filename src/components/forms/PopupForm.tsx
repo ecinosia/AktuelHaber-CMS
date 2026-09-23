@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
@@ -154,12 +155,12 @@ export function PopupForm({ popup }: { popup?: Popup }) {
             {saving && <Loader2 className="h-4 w-4 animate-spin" />}
             {saving ? "Kaydediliyor..." : popup ? "Güncelle" : "Kaydet"}
           </button>
-          <a
+          <Link
             href="/popup"
             className="w-full block text-center bg-surface text-body text-[13.5px] font-extrabold font-archivo py-3 rounded-md border border-line-strong hover:bg-page transition-colors"
           >
             İptal
-          </a>
+          </Link>
         </div>
       </div>
     </form>

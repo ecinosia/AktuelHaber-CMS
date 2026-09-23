@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Save, Loader2, AlertCircle } from "lucide-react";
@@ -735,7 +736,7 @@ export function ArticleForm({ article }: { article?: Article }) {
                   className="text-[12.5px] text-muted-2"
                   style={{ fontFamily: "var(--font-public-sans)" }}
                 >
-                  Eski Slug'lar ({article.previousSlugs.length})
+                  Eski Slug&apos;lar ({article.previousSlugs.length})
                 </span>
                 {article.previousSlugs.length ? (
                   article.previousSlugs.map((s) => (
@@ -799,12 +800,12 @@ export function ArticleForm({ article }: { article?: Article }) {
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               {saving ? "Kaydediliyor..." : article ? "Güncelle" : "Kaydet"}
             </button>
-            <a
+            <Link
               href="/articles"
               className="w-full block text-center bg-surface text-body text-[13.5px] font-extrabold font-archivo py-3 rounded-md border border-line-strong hover:bg-page transition-colors"
             >
               İptal
-            </a>
+            </Link>
           </div>
         </div>
       </div>
