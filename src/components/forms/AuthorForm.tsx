@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
-import type { Author, AuthorPublishType, AuthorStatus } from "@/types";
+import type { AdminUser, Author, AuthorPublishType, AuthorStatus } from "@/types";
 import { omitEmptyStrings } from "@/lib/forms";
 import { ImageUpload } from "@/components/ui/ImageUpload";
 import { CmsCard, CmsField, CmsInput, CmsSelect, CmsTextarea } from "@/components/ui/CmsCard";
@@ -54,6 +54,22 @@ export function AuthorForm({ author }: { author?: Author }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  // Publish type and the CMS-user link are admin-only (the BE enforces it; this just hides the controls).
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [linkedUserId, setLinkedUserId] = useState("");
+  const [initialLinkedUserId, setInitialLinkedUserId] = useState("");
+
+  useEffect(() => {
+    api.auth.me().then(async (session) => {
+      if (session.role !== "admin") return;
+      setIsAdmin(true);
+      const [list, link] = await Promise.all([api.users.list(), author ? api.authors.getLink(author.id) : null]);
+      setUsers(list);
+      setLinkedUserId(link?.keycloakUserId ?? "");
+      setInitialLinkedUserId(link?.keycloakUserId ?? "");
+    }).catch(() => undefined);
+  }, [author]);
 
   function clearFieldError(key: string) {
     setFieldErrors((prev) => {
@@ -104,9 +120,14 @@ export function AuthorForm({ author }: { author?: Author }) {
     setSaving(true);
     setError(null);
     try {
-      const payload = omitEmptyStrings(form);
-      if (author) await api.authors.update(author.id, payload);
-      else await api.authors.create({ ...payload, slug: form.slug, firstName: form.firstName, lastName: form.lastName });
+      const { publishType, ...rest } = omitEmptyStrings(form);
+      const payload = isAdmin ? { ...rest, publishType } : rest;
+      const saved = author
+        ? await api.authors.update(author.id, payload)
+        : await api.authors.create({ ...payload, slug: form.slug, firstName: form.firstName, lastName: form.lastName });
+      if (isAdmin && linkedUserId !== initialLinkedUserId) {
+        await api.authors.setLink(saved.id, linkedUserId || null);
+      }
       router.push("/authors");
       router.refresh();
     } catch (err) {
@@ -173,12 +194,29 @@ export function AuthorForm({ author }: { author?: Author }) {
 
         <div className="flex flex-col gap-4">
           <CmsCard title="Yayın Ayarları">
-            <CmsField label="Yayın Türü">
-              <CmsSelect value={form.publishType} onChange={(e) => set("publishType", e.target.value as AuthorPublishType)}>
-                <option value="DIRECT">Doğrudan Yayınla</option>
-                <option value="REQUIRES_APPROVAL">Onay Gerekli</option>
-              </CmsSelect>
-            </CmsField>
+            {isAdmin && (
+              <>
+                <CmsField label="Yayın Türü">
+                  <CmsSelect value={form.publishType} onChange={(e) => set("publishType", e.target.value as AuthorPublishType)}>
+                    <option value="DIRECT">Doğrudan Yayınla</option>
+                    <option value="REQUIRES_APPROVAL">Onay Gerekli</option>
+                  </CmsSelect>
+                </CmsField>
+                <CmsField label="Bağlı CMS Kullanıcısı">
+                  <CmsSelect value={linkedUserId} onChange={(e) => setLinkedUserId(e.target.value)}>
+                    <option value="">Bağlı değil</option>
+                    {users.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.firstName} {u.lastName} ({u.email})
+                      </option>
+                    ))}
+                  </CmsSelect>
+                </CmsField>
+                <p className="text-[12px] text-muted-2 m-0" style={{ fontFamily: "var(--font-public-sans)" }}>
+                  Yalnızca bu yazara bağlı kullanıcı, yayın türü “Doğrudan” ise bu yazarın içeriğini onaysız yayınlayabilir.
+                </p>
+              </>
+            )}
             <CmsField label="Durum">
               <CmsSelect value={form.status} onChange={(e) => set("status", e.target.value as AuthorStatus)}>
                 <option value="ACTIVE">Aktif</option>

@@ -175,6 +175,10 @@ export const api = {
     update: (id: string, dto: Partial<Omit<Author, "id" | "createdAt">>) =>
       apiFetch<Author>(`/authors/${id}`, withBody("PATCH", dto)),
     remove: (id: string) => apiFetch<void>(`/authors/${id}`, { method: "DELETE" }),
+    // Admin only: the CMS user who IS this author (decides who may publish as them without review).
+    getLink: (id: string) => apiFetch<{ keycloakUserId: string | null }>(`/authors/${id}/link`),
+    setLink: (id: string, keycloakUserId: string | null) =>
+      apiFetch<{ keycloakUserId: string | null }>(`/authors/${id}/link`, withBody("PUT", { keycloakUserId })),
   },
 
   tags: {
@@ -212,6 +216,9 @@ export const api = {
     update: (id: string, dto: Partial<ColumnWritePayload>) =>
       apiFetch<Column>(`/columns/${id}`, withBody("PATCH", dto)),
     remove: (id: string) => apiFetch<void>(`/columns/${id}`, { method: "DELETE" }),
+    reviewQueue: () => apiFetch<Column[]>("/columns/review-queue"),
+    approve: (id: string) => apiFetch<Column>(`/columns/${id}/approve`, { method: "POST" }),
+    reject: (id: string) => apiFetch<Column>(`/columns/${id}/reject`, { method: "POST" }),
   },
 
   comments: {
