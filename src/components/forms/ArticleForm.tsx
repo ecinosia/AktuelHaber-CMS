@@ -254,7 +254,8 @@ export function ArticleForm({ article }: { article?: Article }) {
   function clearFieldError(key: string) {
     setFieldErrors((prev) => {
       if (!(key in prev)) return prev;
-      const { [key]: _removed, ...rest } = prev;
+      const rest = { ...prev };
+      delete rest[key];
       return rest;
     });
   }

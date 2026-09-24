@@ -77,7 +77,8 @@ export function ColumnForm({ column }: { column?: Column }) {
     setForm((prev) => ({ ...prev, [key]: value }));
     setFieldErrors((prev) => {
       if (!(key in prev)) return prev;
-      const { [key]: _removed, ...rest } = prev;
+      const rest = { ...prev };
+      delete rest[key];
       return rest;
     });
   }
