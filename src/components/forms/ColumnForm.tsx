@@ -50,6 +50,21 @@ function FieldError({ message }: { message?: string }) {
   );
 }
 
+function generateSlug(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[çÇ]/g, "c")
+    .replace(/[ğĞ]/g, "g")
+    .replace(/[ıİ]/g, "i")
+    .replace(/[öÖ]/g, "o")
+    .replace(/[şŞ]/g, "s")
+    .replace(/[üÜ]/g, "u")
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-");
+}
+
 function toForm(c: Column): FormState {
   return {
     slug: c.slug, title: c.title, spot: c.spot ?? "", content: c.content,
@@ -157,11 +172,15 @@ export function ColumnForm({ column }: { column?: Column }) {
           <CmsCard title="Temel Bilgiler">
             <div className="grid grid-cols-1 sm:grid-cols-[2fr_1fr] gap-4">
               <CmsField label="Başlık*">
-                <CmsInput required className={fieldErrors.title ? "cms-input-error" : undefined} value={form.title} onChange={(e) => set("title", e.target.value)} placeholder="Yazı başlığını girin" />
+                <CmsInput required className={fieldErrors.title ? "cms-input-error" : undefined} value={form.title} onChange={(e) => {
+                  const title = e.target.value;
+                  set("title", title);
+                  if (!column) set("slug", generateSlug(title));
+                }} placeholder="Yazı başlığını girin" />
                 <FieldError message={fieldErrors.title} />
               </CmsField>
               <CmsField label="Slug*">
-                <CmsInput required className={fieldErrors.slug ? "cms-input-error" : undefined} value={form.slug} onChange={(e) => set("slug", e.target.value)} placeholder="yazi-basligi" />
+                <CmsInput required readOnly={!!column} className={fieldErrors.slug ? "cms-input-error" : undefined} value={form.slug} onChange={(e) => set("slug", e.target.value)} placeholder="yazi-basligi" />
                 <FieldError message={fieldErrors.slug} />
               </CmsField>
             </div>

@@ -65,8 +65,14 @@ export function AuthorForm({ author }: { author?: Author }) {
     api.auth.me().then(async (session) => {
       if (session.role !== "admin") return;
       setIsAdmin(true);
-      const [list, link] = await Promise.all([api.users.list(), author ? api.authors.getLink(author.id) : null]);
-      setUsers(list);
+      const [list, link, links] = await Promise.all([
+        api.users.list(),
+        author ? api.authors.getLink(author.id) : null,
+        api.authors.links(),
+      ]);
+      // Only users not yet linked to another author (this author's own user stays selectable).
+      const taken = new Set(links.filter((l) => l.id !== author?.id).map((l) => l.keycloakUserId));
+      setUsers(list.filter((u) => !taken.has(u.id)));
       setLinkedUserId(link?.keycloakUserId ?? "");
       setInitialLinkedUserId(link?.keycloakUserId ?? "");
     }).catch(() => undefined);
@@ -95,6 +101,7 @@ export function AuthorForm({ author }: { author?: Author }) {
     if (!form.email.trim()) errors.email = "E-posta zorunludur.";
     else if (!/^\S+@\S+\.\S+$/.test(form.email.trim())) errors.email = "Geçerli bir e-posta girin.";
     if (!form.bio.trim()) errors.bio = "Hakkında zorunludur.";
+    if (!author && !linkedUserId) errors.linkedUserId = "Her yazar için bir CMS kullanıcısı seçilmelidir.";
     return errors;
   }
 
@@ -123,11 +130,11 @@ export function AuthorForm({ author }: { author?: Author }) {
     try {
       const { publishType, ...rest } = omitEmptyStrings(form);
       const payload = isAdmin ? { ...rest, publishType } : rest;
-      const saved = author
-        ? await api.authors.update(author.id, payload)
-        : await api.authors.create({ ...payload, slug: form.slug, firstName: form.firstName, lastName: form.lastName });
-      if (isAdmin && linkedUserId !== initialLinkedUserId) {
-        await api.authors.setLink(saved.id, linkedUserId || null);
+      if (author) {
+        await api.authors.update(author.id, payload);
+        if (isAdmin && linkedUserId !== initialLinkedUserId) await api.authors.setLink(author.id, linkedUserId || null);
+      } else {
+        await api.authors.create({ ...payload, slug: form.slug, firstName: form.firstName, lastName: form.lastName, keycloakUserId: linkedUserId });
       }
       router.push("/authors");
       router.refresh();
@@ -203,15 +210,23 @@ export function AuthorForm({ author }: { author?: Author }) {
                     <option value="REQUIRES_APPROVAL">Onay Gerekli</option>
                   </CmsSelect>
                 </CmsField>
-                <CmsField label="Bağlı CMS Kullanıcısı">
-                  <CmsSelect value={linkedUserId} onChange={(e) => setLinkedUserId(e.target.value)}>
-                    <option value="">Bağlı değil</option>
+                <CmsField label={author ? "Bağlı CMS Kullanıcısı" : "Bağlı CMS Kullanıcısı*"}>
+                  <CmsSelect
+                    className={fieldErrors.linkedUserId ? "cms-input-error" : undefined}
+                    value={linkedUserId}
+                    onChange={(e) => {
+                      setLinkedUserId(e.target.value);
+                      clearFieldError("linkedUserId");
+                    }}
+                  >
+                    <option value="">{author ? "Bağlı değil" : "Kullanıcı seçin"}</option>
                     {users.map((u) => (
                       <option key={u.id} value={u.id}>
                         {u.firstName} {u.lastName} ({u.email})
                       </option>
                     ))}
                   </CmsSelect>
+                  <FieldError message={fieldErrors.linkedUserId} />
                 </CmsField>
                 <p className="text-[12px] text-muted-2 m-0" style={{ fontFamily: "var(--font-public-sans)" }}>
                   Yalnızca bu yazara bağlı kullanıcı, yayın türü “Doğrudan” ise bu yazarın içeriğini onaysız yayınlayabilir.

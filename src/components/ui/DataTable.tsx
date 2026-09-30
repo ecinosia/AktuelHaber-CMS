@@ -32,6 +32,7 @@ type Props<T extends { id: string; status?: string }> = {
   addLabel?: string;
   searchPlaceholder?: string;
   statusTabs?: StatusTab[];
+  initialTab?: string;
   showThumbnail?: boolean;
   thumbnailKey?: keyof T;
   actions?: DataTableAction<T>[];
@@ -99,6 +100,7 @@ export function DataTable<T extends { id: string; status?: string }>({
   addLabel = "Ekle",
   searchPlaceholder = "Ara...",
   statusTabs,
+  initialTab,
   showThumbnail,
   thumbnailKey,
   actions,
@@ -115,7 +117,9 @@ export function DataTable<T extends { id: string; status?: string }>({
   filterBar,
 }: Props<T>) {
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState(statusTabs?.[0]?.value ?? "");
+  const [activeTab, setActiveTab] = useState(
+    initialTab ?? statusTabs?.[0]?.value ?? "",
+  );
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<1 | -1>(1);
   const [page, setPage] = useState(1);

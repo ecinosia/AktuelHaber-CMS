@@ -185,6 +185,7 @@ export function ArticleForm({ article }: { article?: Article }) {
   const [tags, setTags] = useState<Tag[]>([]);
   const [relatedCandidates, setRelatedCandidates] = useState<Article[]>([]);
   const [relatedFilter, setRelatedFilter] = useState("");
+  const [canPublish, setCanPublish] = useState(false);
   const [selectedTags, setSelectedTags] = useState<Tag[]>(article?.tags ?? []);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -240,8 +241,9 @@ export function ArticleForm({ article }: { article?: Article }) {
     api.categories.list().then(setCategories);
     api.authors.list().then(setAuthors);
     api.tags.list().then(setTags);
+    api.auth.me().then((s) => setCanPublish(s.canPublish)).catch(() => undefined);
     api.articles
-      .adminList({ pageSize: 100 })
+      .publishedList({ pageSize: 100 })
       .then((r) => setRelatedCandidates(r.items));
   }, []);
 
@@ -611,7 +613,12 @@ export function ArticleForm({ article }: { article?: Article }) {
                 value={form.status}
                 onChange={(e) => set("status", e.target.value as ArticleStatus)}
               >
-                {STATUS_OPTIONS.map((s) => (
+                {STATUS_OPTIONS.filter(
+                  (s) =>
+                    canPublish ||
+                    s.value === form.status ||
+                    (s.value !== "PUBLISHED" && s.value !== "SCHEDULED"),
+                ).map((s) => (
                   <option key={s.value} value={s.value}>
                     {s.label}
                   </option>

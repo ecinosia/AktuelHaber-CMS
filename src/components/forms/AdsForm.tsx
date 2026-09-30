@@ -99,6 +99,7 @@ export function AdsForm({ banner }: { banner?: AdBanner }) {
                   />
                   <span className="text-[13px] font-bold font-archivo text-ink">
                     {s.label}
+                    <span className="ml-2 font-normal text-muted">({s.size})</span>
                     {"hint" in s && (
                       <span className="block text-[12px] font-normal text-muted" style={{ fontFamily: "var(--font-public-sans)" }}>{s.hint}</span>
                     )}

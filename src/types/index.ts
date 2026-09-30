@@ -301,6 +301,7 @@ export type MarketRate = {
 export type Session = {
   email: string;
   role: string;
+  canPublish: boolean;
 };
 
 export type AdminUser = {

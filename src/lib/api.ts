@@ -170,12 +170,13 @@ export const api = {
   authors: {
     list: () => apiFetch<Author[]>("/authors"),
     create: (
-      dto: Partial<Omit<Author, "id" | "createdAt">> & { slug: string; firstName: string; lastName: string },
+      dto: Partial<Omit<Author, "id" | "createdAt">> & { slug: string; firstName: string; lastName: string; keycloakUserId: string },
     ) => apiFetch<Author>("/authors", withBody("POST", dto)),
     update: (id: string, dto: Partial<Omit<Author, "id" | "createdAt">>) =>
       apiFetch<Author>(`/authors/${id}`, withBody("PATCH", dto)),
     remove: (id: string) => apiFetch<void>(`/authors/${id}`, { method: "DELETE" }),
     // Admin only: the CMS user who IS this author (decides who may publish as them without review).
+    links: () => apiFetch<{ id: string; keycloakUserId: string }[]>("/authors/links"),
     getLink: (id: string) => apiFetch<{ keycloakUserId: string | null }>(`/authors/${id}/link`),
     setLink: (id: string, keycloakUserId: string | null) =>
       apiFetch<{ keycloakUserId: string | null }>(`/authors/${id}/link`, withBody("PUT", { keycloakUserId })),
@@ -197,6 +198,9 @@ export const api = {
       page?: number;
       pageSize?: number;
     } = {}) => apiFetch<Paginated<Article>>(`/articles/admin${buildQuery(params)}`),
+    // Published articles site-wide (not scoped to the caller) — candidates for "related news".
+    publishedList: (params: { page?: number; pageSize?: number } = {}) =>
+      apiFetch<Paginated<Article>>(`/articles${buildQuery(params)}`),
     reviewQueue: () => apiFetch<Article[]>("/articles/review-queue"),
     byId: (id: string) => apiFetch<Article>(`/articles/id/${id}`),
     create: (dto: ArticleWritePayload) => apiFetch<Article>("/articles", withBody("POST", dto)),

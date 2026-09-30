@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { BrandLogo } from "@/components/providers/BrandProvider";
+import { homePath } from "@/lib/access";
 import { api, ApiError } from "@/lib/api";
 
 export default function LoginPage() {
@@ -33,8 +34,8 @@ export default function LoginPage() {
       return;
     }
     try {
-      await api.auth.login(username, password, remember);
-      router.push("/");
+      const { role } = await api.auth.login(username, password, remember);
+      router.push(homePath(role));
       router.refresh();
     } catch (err) {
       setError(err instanceof ApiError && err.status === 401 ? "E-posta veya şifre hatalı." : "Giriş yapılamadı.");

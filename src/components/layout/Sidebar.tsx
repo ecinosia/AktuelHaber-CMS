@@ -5,12 +5,13 @@ import { BrandLogo, useBrand } from "@/components/providers/BrandProvider";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
+import { canAccess, homePath } from "@/lib/access";
 
 type NavChild = { href: string; label: string };
 type NavItem = { label: string; children: NavChild[] };
 type NavGroup = { heading: string; items: NavItem[] };
 
-const NAV: NavGroup[] = [
+const ALL_NAV: NavGroup[] = [
   {
     heading: "Genel",
     items: [
@@ -149,10 +150,18 @@ const NAV: NavGroup[] = [
 export function Sidebar({
   open: mobileOpen,
   onClose,
+  role,
 }: {
   open: boolean;
   onClose: () => void;
+  role: string;
 }) {
+  const NAV = ALL_NAV.map((g) => ({
+    ...g,
+    items: g.items
+      .map((i) => ({ ...i, children: i.children.filter((c) => canAccess(role, c.href)) }))
+      .filter((i) => i.children.length > 0),
+  })).filter((g) => g.items.length > 0);
   const pathname = usePathname();
   const brand = useBrand();
 
@@ -213,7 +222,7 @@ export function Sidebar({
       >
         {/* Logo */}
         <Link
-          href="/"
+          href={homePath(role)}
           onClick={onClose}
           className="flex items-center gap-2.5 px-[22px] py-[18px] border-b border-line"
         >

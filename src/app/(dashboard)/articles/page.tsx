@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { publicUrlFor } from "@/lib/forms";
 import { DataTable } from "@/components/ui/DataTable";
@@ -69,6 +70,15 @@ type SortValue = (typeof SORT_OPTIONS)[number]["value"];
 type ArticleRow = Article & { id: string; status: string };
 
 export default function ArticlesPage() {
+  return (
+    <Suspense>
+      <ArticlesContent />
+    </Suspense>
+  );
+}
+
+function ArticlesContent() {
+  const initialStatus = useSearchParams().get("status") ?? "";
   const [items, setItems] = useState<ArticleRow[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [authors, setAuthors] = useState<Author[]>([]);
@@ -78,8 +88,10 @@ export default function ArticlesPage() {
   const [authorId, setAuthorId] = useState("");
   const [placement, setPlacement] = useState("");
   const [sort, setSort] = useState<SortValue>("date_desc");
+  const [canPublish, setCanPublish] = useState(false);
 
   useEffect(() => {
+    api.auth.me().then((s) => setCanPublish(s.canPublish)).catch(() => undefined);
     api.articles
       .adminList({ pageSize: 200 })
       .then((r) => {
@@ -331,6 +343,7 @@ export default function ArticlesPage() {
         addLabel="Haber Ekle"
         searchPlaceholder="Haber başlığı ara..."
         statusTabs={STATUS_TABS}
+        initialTab={initialStatus}
         showThumbnail
         thumbnailKey="coverImageUrl"
         loading={loading}
@@ -356,7 +369,8 @@ export default function ArticlesPage() {
           >
             {(Object.keys(STATUS_TR) as ArticleStatus[]).map((s) => (
               // SCHEDULED needs a scheduledAt, so it's only settable from the edit page
-              <option key={s} value={s} disabled={s === "SCHEDULED"}>
+              // Without direct-publish rights the BE turns Yayında into Onay Bekliyor, so don't offer it
+              <option key={s} value={s} disabled={s === "SCHEDULED" || (s === "PUBLISHED" && !canPublish && status !== "PUBLISHED")}>
                 {STATUS_TR[s]}
               </option>
             ))}
