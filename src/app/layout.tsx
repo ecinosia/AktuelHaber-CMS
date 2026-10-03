@@ -1,19 +1,20 @@
 import type { Metadata } from "next";
-import { Archivo, Public_Sans } from "next/font/google";
+import localFont from "next/font/local";
 import { getBrand } from "@/lib/brand";
 import { BrandProvider } from "@/components/providers/BrandProvider";
 import "./globals.css";
 
-const archivo = Archivo({
-  subsets: ["latin"],
-  weight: ["600", "700", "800", "900"],
+// Self-hosted (OFL) variable fonts, latin + latin-ext (Turkish glyphs): the build must not depend on Google Fonts.
+const archivo = localFont({
+  src: "../fonts/archivo-latin-ext.woff2",
+  weight: "100 900",
   variable: "--font-archivo",
   display: "swap",
 });
 
-const publicSans = Public_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+const publicSans = localFont({
+  src: "../fonts/publicsans-latin-ext.woff2",
+  weight: "100 900",
   variable: "--font-public-sans",
   display: "swap",
 });
