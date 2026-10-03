@@ -70,10 +70,9 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   if (!res.ok) {
     throw new ApiError(await extractErrorMessage(res, path, options.method), res.status);
   }
-  if (res.status === 204) {
-    return undefined as T;
-  }
-  return res.json() as Promise<T>;
+  // Nest answers some void routes (e.g. reset-password) with 201/200 and an empty body: that is success, not a JSON error.
+  const text = res.status === 204 ? "" : await res.text();
+  return (text === "" ? undefined : JSON.parse(text)) as T;
 }
 
 function withBody(method: string, body: unknown): RequestInit {
