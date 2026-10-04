@@ -31,6 +31,8 @@ type Props<T extends { id: string; status?: string }> = {
   addHref?: string;
   addLabel?: string;
   searchPlaceholder?: string;
+  /** Server-side search hook: called with the typed text so the page can query ALL rows, not just the loaded ones. */
+  onSearchChange?: (q: string) => void;
   statusTabs?: StatusTab[];
   initialTab?: string;
   showThumbnail?: boolean;
@@ -99,6 +101,7 @@ export function DataTable<T extends { id: string; status?: string }>({
   addHref,
   addLabel = "Ekle",
   searchPlaceholder = "Ara...",
+  onSearchChange,
   statusTabs,
   initialTab,
   showThumbnail,
@@ -195,7 +198,7 @@ export function DataTable<T extends { id: string; status?: string }>({
               type="text"
               placeholder={searchPlaceholder}
               value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); onSearchChange?.(e.target.value); }}
               className="w-full sm:w-64 pl-9 pr-3 py-2 border border-line-strong rounded-md text-[13px] text-ink placeholder-muted-2 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-colors"
               style={{ fontFamily: "var(--font-public-sans)" }}
             />

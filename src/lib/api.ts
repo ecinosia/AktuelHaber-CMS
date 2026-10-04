@@ -194,6 +194,7 @@ export const api = {
       status?: ArticleStatus;
       categoryId?: string;
       authorId?: string;
+      q?: string;
       page?: number;
       pageSize?: number;
     } = {}) => apiFetch<Paginated<Article>>(`/articles/admin${buildQuery(params)}`),

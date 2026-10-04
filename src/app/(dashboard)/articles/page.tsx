@@ -90,17 +90,22 @@ function ArticlesContent() {
   const [sort, setSort] = useState<SortValue>("date_desc");
   const [canPublish, setCanPublish] = useState(false);
 
+  const [q, setQ] = useState("");
   useEffect(() => {
     api.auth.me().then((s) => setCanPublish(s.canPublish)).catch(() => undefined);
-    api.articles
-      .adminList({ pageSize: 200 })
-      .then((r) => {
-        setItems(r.items as ArticleRow[]);
-      })
-      .finally(() => setLoading(false));
     api.categories.list().then(setCategories);
     api.authors.list().then(setAuthors);
   }, []);
+  // The title search runs on the server (all articles); 300 ms after the last keystroke.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      api.articles
+        .adminList({ pageSize: 200, q })
+        .then((r) => setItems(r.items as ArticleRow[]))
+        .finally(() => setLoading(false));
+    }, q ? 300 : 0);
+    return () => clearTimeout(timer);
+  }, [q]);
 
   async function handleDelete(id: string) {
     await api.articles.remove(id);
@@ -342,6 +347,7 @@ function ArticlesContent() {
         addHref="/articles/new"
         addLabel="Haber Ekle"
         searchPlaceholder="Haber başlığı ara..."
+        onSearchChange={setQ}
         statusTabs={STATUS_TABS}
         initialTab={initialStatus}
         showThumbnail
