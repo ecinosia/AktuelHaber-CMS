@@ -92,6 +92,7 @@ export function UserForm({ user }: { user?: AdminUser }) {
             <CmsField label="Şifre">
               <CmsInput
                 type="password"
+                autoComplete="new-password"
                 required={!user}
                 minLength={8}
                 value={form.password}
