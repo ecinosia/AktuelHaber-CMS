@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import type { AdminUser } from "@/types";
 import { CmsCard, CmsField, CmsInput, CmsSelect } from "@/components/ui/CmsCard";
 
@@ -58,8 +58,10 @@ export function UserForm({ user }: { user?: AdminUser }) {
       }
       router.push("/users");
       router.refresh();
-    } catch {
-      setError("Kullanıcı kaydedilemedi. Keycloak bağlantısını ve yetkileri kontrol edin.");
+    } catch (err) {
+      // Show the server's own reason when it gave one (e.g. "…açık oturumları kapatılamadı"), the generic hint otherwise.
+      const generic = "Kullanıcı kaydedilemedi. Keycloak bağlantısını ve yetkileri kontrol edin.";
+      setError(err instanceof ApiError && err.message && !/^Request failed|^Upload failed/.test(err.message) ? `${generic} (${err.message})` : generic);
     } finally {
       setSaving(false);
     }
