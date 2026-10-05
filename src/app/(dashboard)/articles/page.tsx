@@ -7,10 +7,7 @@ import { api } from "@/lib/api";
 import { publicUrlFor } from "@/lib/forms";
 import { DataTable } from "@/components/ui/DataTable";
 import { PageContainer } from "@/components/ui/PageContainer";
-import {
-  applySourceFilter,
-  type SourceFilterValue,
-} from "@/components/ui/SourceFilter";
+import { type SourceFilterValue } from "@/components/ui/SourceFilter";
 import type {
   Article,
   ArticlePlacement,
@@ -91,25 +88,58 @@ function ArticlesContent() {
   const [canPublish, setCanPublish] = useState(false);
 
   const [q, setQ] = useState("");
+  const [tab, setTab] = useState(initialStatus);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const [total, setTotal] = useState(0);
+  const [reload, setReload] = useState(0);
+  // Any filter, search, tab or sort change goes back to page 1 (React batches this with the change itself: one request).
+  const change = <V,>(set: (v: V) => void) => (v: V) => { set(v); setPage(1); };
   useEffect(() => {
     api.auth.me().then((s) => setCanPublish(s.canPublish)).catch(() => undefined);
     api.categories.list().then(setCategories);
     api.authors.list().then(setAuthors);
   }, []);
-  // The title search runs on the server (all articles); 300 ms after the last keystroke.
+  // Everything is filtered, sorted and paged on the server: one request per change, only that page comes back.
+  // The title search waits 300 ms after the last keystroke; an answer that arrives after a newer request is ignored.
   useEffect(() => {
+    let current = true;
+    const [sortBy, sortDir] = sort.split("_") as ["date" | "title" | "views", "asc" | "desc"];
     const timer = setTimeout(() => {
+      setLoading(true);
       api.articles
-        .adminList({ pageSize: 200, q })
-        .then((r) => setItems(r.items as ArticleRow[]))
-        .finally(() => setLoading(false));
+        .adminList({
+          page,
+          pageSize,
+          q,
+          status: (tab || undefined) as ArticleStatus | undefined,
+          categoryId,
+          authorId,
+          placement,
+          source: source || undefined,
+          sortBy,
+          sortDir,
+        })
+        .then((r) => {
+          if (!current) return;
+          setItems(r.items as ArticleRow[]);
+          setTotal(r.total);
+        })
+        .catch(() => undefined)
+        .finally(() => {
+          if (current) setLoading(false);
+        });
     }, q ? 300 : 0);
-    return () => clearTimeout(timer);
-  }, [q]);
+    return () => {
+      current = false;
+      clearTimeout(timer);
+    };
+  }, [page, pageSize, q, tab, categoryId, authorId, placement, source, sort, reload]);
 
   async function handleDelete(id: string) {
     await api.articles.remove(id);
     setItems((prev) => prev.filter((a) => a.id !== id));
+    setReload((n) => n + 1); // refill the page and the total from the server
   }
 
   async function handlePlacementChange(id: string, next: ArticlePlacement) {
@@ -131,33 +161,6 @@ function ArticlesContent() {
     }
   }
 
-  const filtered =applySourceFilter(items, source)
-    .filter((a) => !categoryId || a.categoryId === categoryId)
-    .filter((a) => !authorId || a.authorId === authorId)
-    .filter((a) => !placement || a.placement === placement)
-    .sort((a, b) => {
-      switch (sort) {
-        case "title_asc":
-          return a.title.localeCompare(b.title, "tr");
-        case "title_desc":
-          return b.title.localeCompare(a.title, "tr");
-        case "views_asc":
-          return a.viewCount - b.viewCount;
-        case "views_desc":
-          return b.viewCount - a.viewCount;
-        case "date_asc":
-          return (
-            new Date(a.publishedAt ?? a.createdAt).getTime() -
-            new Date(b.publishedAt ?? b.createdAt).getTime()
-          );
-        default:
-          return (
-            new Date(b.publishedAt ?? b.createdAt).getTime() -
-            new Date(a.publishedAt ?? a.createdAt).getTime()
-          );
-      }
-    });
-
   return (
     <PageContainer>
       <div className="flex items-center justify-between">
@@ -171,7 +174,7 @@ function ArticlesContent() {
           <>
             <select
               value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
+              onChange={(e) => change(setCategoryId)(e.target.value)}
               className="px-3 py-1.5 border border-line-strong rounded-md text-[12px] text-body"
             >
               <option value="">Tüm Kategoriler</option>
@@ -183,7 +186,7 @@ function ArticlesContent() {
             </select>
             <select
               value={authorId}
-              onChange={(e) => setAuthorId(e.target.value)}
+              onChange={(e) => change(setAuthorId)(e.target.value)}
               className="px-3 py-1.5 border border-line-strong rounded-md text-[12px] text-body"
             >
               <option value="">Tüm Yazarlar</option>
@@ -195,7 +198,7 @@ function ArticlesContent() {
             </select>
             <select
               value={placement}
-              onChange={(e) => setPlacement(e.target.value)}
+              onChange={(e) => change(setPlacement)(e.target.value)}
               className="px-3 py-1.5 border border-line-strong rounded-md text-[12px] text-body"
             >
               <option value="">Tüm Yerleşimler</option>
@@ -207,7 +210,7 @@ function ArticlesContent() {
             </select>
             <select
               value={source}
-              onChange={(e) => setSource(e.target.value as SourceFilterValue)}
+              onChange={(e) => change(setSource)(e.target.value as SourceFilterValue)}
               className="px-3 py-1.5 border border-line-strong rounded-md text-[12px] text-body"
             >
               {SOURCE_OPTIONS.map((o) => (
@@ -218,7 +221,7 @@ function ArticlesContent() {
             </select>
             <select
               value={sort}
-              onChange={(e) => setSort(e.target.value as SortValue)}
+              onChange={(e) => change(setSort)(e.target.value as SortValue)}
               className="px-3 py-1.5 border border-line-strong rounded-md text-[12px] text-body"
             >
               {SORT_OPTIONS.map((o) => (
@@ -235,6 +238,7 @@ function ArticlesContent() {
                 setPlacement("");
                 setSource("");
                 setSort("date_desc");
+                setPage(1);
               }}
               className="ml-auto px-5 py-1.5 border border-line-strong bg-primary text-[12px] font-bold font-archivo text-white rounded-md hover:bg-primary-hover transition-colors"
             >
@@ -343,13 +347,14 @@ function ArticlesContent() {
             ),
           },
         ]}
-        rows={filtered}
+        rows={items}
         addHref="/articles/new"
         addLabel="Haber Ekle"
         searchPlaceholder="Haber başlığı ara..."
-        onSearchChange={setQ}
+        onSearchChange={(v) => { setQ(v); setPage(1); }}
         statusTabs={STATUS_TABS}
         initialTab={initialStatus}
+        server={{ total, page, pageSize, activeTab: tab, onTabChange: change(setTab), onPageChange: setPage, onPageSizeChange: (n) => { setPageSize(n); setPage(1); } }}
         showThumbnail
         thumbnailKey="coverImageUrl"
         loading={loading}

@@ -1,0 +1,3 @@
+Ekran goruntulerini bu klasore GORSEL numarasiyla kaydedin: 1.1.png, 4.5.png, 7.3.png ...
+(png, jpg, jpeg veya webp). Olmayan numaralar bos kutu olarak kalir.
+Sonra PDF'i yeniden uretmek icin CMS klasorunden:  python gorseller/_pdf_olustur.py

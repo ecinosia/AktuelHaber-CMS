@@ -49,9 +49,35 @@ type Props<T extends { id: string; status?: string }> = {
   hideDelete?: boolean;
   statusLabel?: (status: string, row: T) => React.ReactNode;
   filterBar?: React.ReactNode;
+  /**
+   * Server mode: `rows` is ONE page that the server already filtered and sorted. The table then does not filter, sort or slice;
+   * the tab, the page and the page size are owned by the parent, which asks the server again on every change.
+   */
+  server?: {
+    total: number;
+    page: number;
+    pageSize: number;
+    activeTab: string;
+    onTabChange: (tab: string) => void;
+    onPageChange: (page: number) => void;
+    onPageSizeChange: (size: number) => void;
+  };
 };
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+
+/** Page numbers to show: always the first and last page and a window around the current one, with "…" for the gaps. */
+export function pageWindow(current: number, total: number): Array<number | "…"> {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const start = Math.max(2, current - 2);
+  const end = Math.min(total - 1, current + 2);
+  const out: Array<number | "…"> = [1];
+  if (start > 2) out.push("…");
+  for (let n = start; n <= end; n++) out.push(n);
+  if (end < total - 1) out.push("…");
+  out.push(total);
+  return out;
+}
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
@@ -118,6 +144,7 @@ export function DataTable<T extends { id: string; status?: string }>({
   hideDelete,
   statusLabel,
   filterBar,
+  server,
 }: Props<T>) {
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState(
@@ -130,8 +157,11 @@ export function DataTable<T extends { id: string; status?: string }>({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [filtersOpen, setFiltersOpen] = useState(true);
   const confirmDialog = useConfirm();
+  const serverMode = server !== undefined;
+  const shownTab = server ? server.activeTab : activeTab;
 
   const filtered = useMemo(() => {
+    if (serverMode) return rows;
     let data = rows;
     if (activeTab && activeTab !== "Tümü" && activeTab !== "") {
       data = data.filter((r) => r.status === activeTab);
@@ -153,13 +183,17 @@ export function DataTable<T extends { id: string; status?: string }>({
       });
     }
     return data;
-  }, [rows, search, activeTab, sortKey, sortDir]);
+  }, [rows, search, activeTab, sortKey, sortDir, serverMode]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const currentPage = Math.min(page, totalPages);
-  const pageRows = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const total = server ? server.total : filtered.length;
+  const shownPageSize = server ? server.pageSize : pageSize;
+  const totalPages = Math.max(1, Math.ceil(total / shownPageSize));
+  const currentPage = Math.min(server ? server.page : page, totalPages);
+  const pageRows = server ? rows : filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const goToPage = (n: number) => (server ? server.onPageChange(n) : setPage(n));
 
   function toggleSort(key: string) {
+    if (serverMode) return; // the server decides the order (the parent's sort control)
     if (sortKey === key) setSortDir((d) => (d === 1 ? -1 : 1));
     else { setSortKey(key); setSortDir(1); }
   }
@@ -211,9 +245,9 @@ export function DataTable<T extends { id: string; status?: string }>({
                 <button
                   key={t.value}
                   type="button"
-                  onClick={() => { setActiveTab(t.value); setPage(1); }}
+                  onClick={() => { if (server) server.onTabChange(t.value); else { setActiveTab(t.value); setPage(1); } }}
                   className={`px-3 py-1.5 rounded-full border text-[12px] font-bold font-archivo cursor-pointer transition-colors ${
-                    activeTab === t.value
+                    shownTab === t.value
                       ? "bg-primary text-white border-primary"
                       : "bg-surface text-body border-line-strong hover:border-muted"
                   }`}
@@ -290,7 +324,7 @@ export function DataTable<T extends { id: string; status?: string }>({
               {columns.map((col) => (
                 <th
                   key={String(col.key)}
-                  onClick={() => col.sortable !== false && toggleSort(String(col.key))}
+                  onClick={() => col.sortable !== false && !serverMode && toggleSort(String(col.key))}
                   style={col.width ? { width: col.width } : undefined}
                   className={`text-left px-3 py-3 text-[10.5px] font-extrabold font-archivo uppercase tracking-wider text-muted select-none whitespace-nowrap ${col.sortable === false ? "" : "cursor-pointer"}`}
                 >
@@ -438,14 +472,14 @@ export function DataTable<T extends { id: string; status?: string }>({
       {/* Pagination */}
       <div className="flex items-center justify-between flex-wrap gap-3 px-5 py-4 border-t border-line">
         <span className="text-[12px] text-muted-2" style={{ fontFamily: "var(--font-public-sans)" }}>
-          {filtered.length === 0
+          {total === 0
             ? "Kayıt yok"
-            : `${(currentPage - 1) * pageSize + 1}–${Math.min(currentPage * pageSize, filtered.length)} / ${filtered.length}`}
+            : `${(currentPage - 1) * shownPageSize + 1}–${Math.min(currentPage * shownPageSize, total)} / ${total}`}
         </span>
         <div className="flex items-center gap-3 flex-wrap">
           <select
-            value={pageSize}
-            onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+            value={shownPageSize}
+            onChange={(e) => { if (server) server.onPageSizeChange(Number(e.target.value)); else { setPageSize(Number(e.target.value)); setPage(1); } }}
             className="px-2 py-1.5 border border-line-strong rounded-md text-[12px] text-body"
           >
             {PAGE_SIZE_OPTIONS.map((n) => (
@@ -455,17 +489,19 @@ export function DataTable<T extends { id: string; status?: string }>({
           <div className="flex items-center gap-1.5 flex-wrap">
           <button
             type="button"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            onClick={() => goToPage(Math.max(1, currentPage - 1))}
             disabled={currentPage === 1}
             className="w-8 h-8 flex items-center justify-center border border-line-strong rounded text-sm text-muted disabled:opacity-40 cursor-pointer hover:bg-surface-2 transition-colors"
           >
             ‹
           </button>
-          {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => i + 1).map((n) => (
+          {pageWindow(currentPage, totalPages).map((n, index) => n === "…" ? (
+            <span key={`gap-${index}`} className="w-6 text-center text-[12px] text-muted-2">…</span>
+          ) : (
             <button
               key={n}
               type="button"
-              onClick={() => setPage(n)}
+              onClick={() => goToPage(n)}
               className={`w-8 h-8 flex items-center justify-center border rounded text-[12px] font-bold font-archivo cursor-pointer transition-colors ${
                 n === currentPage
                   ? "bg-primary text-white border-primary"
@@ -477,7 +513,7 @@ export function DataTable<T extends { id: string; status?: string }>({
           ))}
           <button
             type="button"
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            onClick={() => goToPage(Math.min(totalPages, currentPage + 1))}
             disabled={currentPage === totalPages}
             className="w-8 h-8 flex items-center justify-center border border-line-strong rounded text-sm text-muted disabled:opacity-40 cursor-pointer hover:bg-surface-2 transition-colors"
           >

@@ -194,6 +194,10 @@ export const api = {
       status?: ArticleStatus;
       categoryId?: string;
       authorId?: string;
+      placement?: string;
+      source?: "migrated" | "native";
+      sortBy?: "date" | "title" | "views";
+      sortDir?: "asc" | "desc";
       q?: string;
       page?: number;
       pageSize?: number;
