@@ -1,5 +1,5 @@
 // Everything else in the CMS is admin-only; mirrors the BE's @Roles("admin") guards.
-const OPEN_TO_ALL = ["/articles", "/columns"];
+const OPEN_TO_ALL = ["/articles", "/columns", "/account"]; // /account = every user changes their own password
 const ADMIN_ONLY = ["/articles/review-queue", "/columns/review-queue"];
 
 const under = (path: string, prefix: string) =>

@@ -145,6 +145,10 @@ const ALL_NAV: NavGroup[] = [
       },
     ],
   },
+  {
+    heading: "Hesap",
+    items: [{ label: "Hesabım", children: [{ href: "/account", label: "Şifre Değiştir" }] }],
+  },
 ];
 
 export function Sidebar({
