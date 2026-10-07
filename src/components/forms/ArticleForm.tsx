@@ -182,7 +182,6 @@ export function ArticleForm({ article }: { article?: Article }) {
   );
   const [categories, setCategories] = useState<Category[]>([]);
   const [authors, setAuthors] = useState<Author[]>([]);
-  const [tags, setTags] = useState<Tag[]>([]);
   const [relatedCandidates, setRelatedCandidates] = useState<Article[]>([]);
   const [relatedFilter, setRelatedFilter] = useState("");
   const [canPublish, setCanPublish] = useState(false);
@@ -240,7 +239,6 @@ export function ArticleForm({ article }: { article?: Article }) {
   useEffect(() => {
     api.categories.list().then(setCategories);
     api.authors.list().then(setAuthors);
-    api.tags.list().then(setTags);
     api.auth.me().then((s) => setCanPublish(s.canPublish)).catch(() => undefined);
     api.articles
       .publishedList({ pageSize: 100 })
@@ -268,10 +266,6 @@ export function ArticleForm({ article }: { article?: Article }) {
       "tagIds",
       next.map((t) => t.id),
     );
-  }
-
-  function handleTagCreated(tag: Tag) {
-    setTags((prev) => [...prev, tag]);
   }
 
   function toggleRelated(id: string) {
@@ -474,8 +468,6 @@ export function ArticleForm({ article }: { article?: Article }) {
             {/* Tags */}
             <CmsField label="Etiketler*">
               <TagInput
-                allTags={tags}
-                onTagCreated={handleTagCreated}
                 selected={selectedTags}
                 onChange={(next) => {
                   handleTagsChange(next);

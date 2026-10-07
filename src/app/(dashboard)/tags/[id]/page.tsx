@@ -14,9 +14,7 @@ export default function EditTagPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.tags.list().then((all) => {
-      setTag(all.find((t) => t.id === id) ?? null);
-    }).finally(() => setLoading(false));
+    api.tags.byId(id).then(setTag).catch(() => setTag(null)).finally(() => setLoading(false));
   }, [id]);
 
   if (loading) return <PageContainer><div className="h-10 rounded-lg bg-surface animate-pulse" /></PageContainer>;

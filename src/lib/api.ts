@@ -184,7 +184,13 @@ export const api = {
   },
 
   tags: {
-    list: () => apiFetch<Tag[]>("/tags"),
+    // Paged and searched on the server: a migrated brand has tens of thousands of tags
+    // (Turkiye: 35,538) and loading them all into the browser froze every page that did it.
+    list: (params: { q?: string; page?: number; pageSize?: number } = {}) =>
+      apiFetch<Paginated<Tag>>(`/tags${buildQuery(params)}`),
+    // Both answer with an empty body when nothing matches, which apiFetch gives back as undefined.
+    byId: (id: string) => apiFetch<Tag | null>(`/tags/id/${id}`),
+    bySlug: (slug: string) => apiFetch<Tag | null>(`/tags/${slug}`),
     create: (dto: { slug: string; name: string }) => apiFetch<Tag>("/tags", withBody("POST", dto)),
     update: (id: string, dto: Partial<{ slug: string; name: string }>) =>
       apiFetch<Tag>(`/tags/${id}`, withBody("PATCH", dto)),

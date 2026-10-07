@@ -13,14 +13,24 @@ function slugify(value: string): string {
     .replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-").replace(/-+/g, "-");
 }
 
+// An existing tag is reused rather than duplicated. Looked up by slug first (unique, a single row),
+// then by name, because an imported tag can carry a suffixed slug ("ankara-2") for the same name.
+// Previously the whole tag table was held in the browser for this, which on a migrated brand meant
+// 35,538 tags (a 6 MB response) on every article form.
+async function findExisting(name: string): Promise<Tag | null> {
+  const slug = slugify(name);
+  if (slug) {
+    const bySlug = await api.tags.bySlug(slug).catch(() => null);
+    if (bySlug) return bySlug;
+  }
+  const page = await api.tags.list({ q: name, pageSize: 50 }).catch(() => null);
+  return page?.items.find((t) => t.name.toLowerCase() === name.toLowerCase()) ?? null;
+}
+
 export function TagInput({
-  allTags,
-  onTagCreated,
   selected,
   onChange,
 }: {
-  allTags: Tag[];
-  onTagCreated: (tag: Tag) => void;
   selected: Tag[];
   onChange: (tags: Tag[]) => void;
 }) {
@@ -32,19 +42,13 @@ export function TagInput({
     if (!name) return;
     if (selected.some((t) => t.name.toLowerCase() === name.toLowerCase())) return;
 
-    const existing = allTags.find((t) => t.name.toLowerCase() === name.toLowerCase());
-    if (existing) {
-      onChange([...selected, existing]);
-      return;
-    }
-
     setCreating(true);
     try {
-      const created = await api.tags.create({ slug: slugify(name), name });
-      onTagCreated(created);
-      onChange([...selected, created]);
+      const existing = await findExisting(name);
+      // A slug that is already taken by a different name would make create fail; reuse covers the common case.
+      onChange([...selected, existing ?? (await api.tags.create({ slug: slugify(name), name }))]);
     } catch {
-      // slug collision or transient error — ignore, editor can retype
+      // transient error — the editor can retype
     } finally {
       setCreating(false);
     }
