@@ -76,6 +76,9 @@ function toForm(c: Column): FormState {
   };
 }
 
+const fmtDate = (d: string | null) =>
+  d ? new Date(d).toLocaleString("tr-TR") : "—";
+
 export function ColumnForm({ column }: { column?: Column }) {
   const router = useRouter();
   const [form, setForm] = useState<FormState>(column ? toForm(column) : EMPTY);
@@ -259,6 +262,27 @@ export function ColumnForm({ column }: { column?: Column }) {
               </div>
             ))}
           </CmsCard>
+
+          {/* Column info (read-only, existing columns only) — mirrors "Haber Bilgileri" on the article form.
+              Migrated columns carry their read count from the old site. */}
+          {column && (
+            <CmsCard title="Köşe Yazısı Bilgileri">
+              {[
+                ["Görüntülenme", column.viewCount.toLocaleString("tr-TR")],
+                ["Yayın Tarihi", fmtDate(column.publishedAt)],
+                ["Legacy Kaynak ID", column.legacySourceId ?? "—"],
+                ["Legacy Yol", column.legacyPath ?? "—"],
+                ["İçe Aktarıldı", column.legacySourceId ? "Evet" : "Hayır"],
+              ].map(([label, value]) => (
+                <div key={label} className="flex justify-between items-start gap-3">
+                  <span className="text-[12.5px] text-muted-2 shrink-0" style={{ fontFamily: "var(--font-public-sans)" }}>
+                    {label}
+                  </span>
+                  <strong className="text-[12.5px] font-bold font-archivo text-ink text-right break-all">{value}</strong>
+                </div>
+              ))}
+            </CmsCard>
+          )}
 
           {/* Action buttons */}
           <div className="flex flex-col gap-2.5">

@@ -134,6 +134,16 @@ export default function ColumnsPage() {
             ),
           },
           {
+            key: "viewCount",
+            label: "Okunma",
+            sortable: false,
+            render: (row) => (
+              <span className="text-[12px] text-muted whitespace-nowrap">
+                {row.viewCount.toLocaleString("tr-TR")}
+              </span>
+            ),
+          },
+          {
             key: "createdAt",
             label: "Tarih",
             sortable: false,
