@@ -35,6 +35,8 @@ export type Author = {
   status: AuthorStatus;
   legacySourceId: string | null;
   articleCount?: number; // list endpoint only
+  columnCount?: number; // list endpoint only: published columns (a columnist has columns, not news)
+  columnViews?: number; // list endpoint only: total reads of those columns
   createdAt: string;
 };
 

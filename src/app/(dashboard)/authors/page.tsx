@@ -93,6 +93,8 @@ export default function AuthorsPage() {
             render: (row) => <span className="text-[12.5px] text-muted" style={{ fontFamily: "var(--font-public-sans)" }}>{PUBLISH_LABELS[row.publishType] ?? row.publishType}</span>,
           },
           { key: "articleCount", label: "Haber Sayısı", render: (row) => <span className="text-[13px] text-muted">{row.articleCount ?? 0}</span> },
+          { key: "columnCount", label: "Köşe Yazısı", render: (row) => <span className="text-[13px] text-muted">{row.columnCount ?? 0}</span> },
+          { key: "columnViews", label: "Okunma", render: (row) => <span className="text-[13px] text-muted whitespace-nowrap">{(row.columnViews ?? 0).toLocaleString("tr-TR")}</span> },
         ]}
         filterBar={
           <>
