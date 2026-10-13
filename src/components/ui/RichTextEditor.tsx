@@ -8,6 +8,7 @@ import TiptapImage from "@tiptap/extension-image";
 import TextAlign from "@tiptap/extension-text-align";
 import Highlight from "@tiptap/extension-highlight";
 import Placeholder from "@tiptap/extension-placeholder";
+import { Table, TableRow, TableHeader, TableCell } from "@tiptap/extension-table";
 import { useEffect, useCallback, useRef, useState } from "react";
 import {
   Bold,
@@ -30,6 +31,7 @@ import {
   Undo2,
   Redo2,
   Minus,
+  Table2,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import type { Editor } from "@tiptap/react";
@@ -97,6 +99,8 @@ export function RichTextEditor({ value, onChange, placeholder = "İçeriği bura
   const editorRef = useRef<Editor | null>(null);
 
   const editor = useEditor({
+    // The toolbar (active buttons, the table tools) must follow the cursor.
+    shouldRerenderOnTransaction: true,
     extensions: [
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },
@@ -111,6 +115,11 @@ export function RichTextEditor({ value, onChange, placeholder = "İçeriği bura
       }),
       TextAlign.configure({ types: ["heading", "paragraph"] }),
       Highlight,
+      // Word tables pasted into the editor become real tables; the toolbar below edits them.
+      Table,
+      TableRow,
+      TableHeader,
+      TableCell,
       Placeholder.configure({ placeholder }),
     ],
     content: value || "",
@@ -250,6 +259,11 @@ export function RichTextEditor({ value, onChange, placeholder = "İçeriği bura
           <Link2 className="h-4 w-4" />
         </ToolbarButton>
 
+        {/* Table */}
+        <ToolbarButton title="Tablo Ekle (3x3)" active={editor.isActive("table")} onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}>
+          <Table2 className="h-4 w-4" />
+        </ToolbarButton>
+
         {/* Image */}
         <ToolbarButton title="Görsel Ekle" disabled={uploadingImage} onClick={() => imageInputRef.current?.click()}>
           {uploadingImage ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
@@ -262,6 +276,33 @@ export function RichTextEditor({ value, onChange, placeholder = "İçeriği bura
           className="hidden"
         />
       </div>
+
+      {/* Table tools: only while the cursor is inside a table */}
+      {editor.isActive("table") && (
+        <div className="flex flex-wrap items-center gap-1 px-3 py-1.5 border-b border-gray-100 bg-primary-light/40 text-xs">
+          <span className="mr-1 font-semibold text-gray-600">Tablo:</span>
+          {[
+            ["Sütun Ekle (sağa)", () => editor.chain().focus().addColumnAfter().run(), editor.can().addColumnAfter()],
+            ["Satır Ekle (alta)", () => editor.chain().focus().addRowAfter().run(), editor.can().addRowAfter()],
+            ["Sütunu Sil", () => editor.chain().focus().deleteColumn().run(), editor.can().deleteColumn()],
+            ["Satırı Sil", () => editor.chain().focus().deleteRow().run(), editor.can().deleteRow()],
+            ["Hücreleri Birleştir", () => editor.chain().focus().mergeCells().run(), editor.can().mergeCells()],
+            ["Hücreyi Böl", () => editor.chain().focus().splitCell().run(), editor.can().splitCell()],
+            ["Başlık Satırı", () => editor.chain().focus().toggleHeaderRow().run(), editor.can().toggleHeaderRow()],
+            ["Tabloyu Sil", () => editor.chain().focus().deleteTable().run(), editor.can().deleteTable()],
+          ].map(([label, run, enabled]) => (
+            <button
+              key={label as string}
+              type="button"
+              onClick={run as () => void}
+              disabled={!enabled}
+              className="rounded border border-gray-200 bg-white px-2 py-1 text-gray-700 hover:bg-gray-100 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {label as string}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Editor */}
       <EditorContent editor={editor} />

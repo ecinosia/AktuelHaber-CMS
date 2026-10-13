@@ -73,6 +73,13 @@
 .tiptap-editor .ProseMirror a { @apply text-primary underline underline-offset-2; }
 .tiptap-editor .ProseMirror mark { @apply bg-yellow-200 rounded px-0.5; }
 .tiptap-editor .ProseMirror strong { @apply font-semibold; }
+.tiptap-editor .ProseMirror table { @apply my-3 w-full border-collapse text-sm; table-layout: fixed; }
+.tiptap-editor .ProseMirror th,
+.tiptap-editor .ProseMirror td { @apply border border-gray-300 px-2 py-1 align-top text-left relative; }
+.tiptap-editor .ProseMirror th { @apply bg-gray-100 font-semibold; }
+.tiptap-editor .ProseMirror td > p,
+.tiptap-editor .ProseMirror th > p { @apply mb-0; }
+.tiptap-editor .ProseMirror .selectedCell { background: rgba(37, 99, 235, 0.15); }
 .tiptap-editor .ProseMirror p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
   @apply text-muted-2 pointer-events-none float-left h-0;
