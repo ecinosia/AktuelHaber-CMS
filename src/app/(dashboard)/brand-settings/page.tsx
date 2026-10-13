@@ -47,8 +47,12 @@ export default function BrandSettingsPage() {
     setSaving(true);
     setError(null);
     try {
-      // mapEmbedUrl stays outside omitEmptyStrings — "" is how the map is cleared.
-      const updated = await api.brand.update({ ...omitEmptyStrings(form), mapEmbedUrl: form.mapEmbedUrl });
+      // mapEmbedUrl and googleNewsUrl stay outside omitEmptyStrings — "" is how each is cleared.
+      const updated = await api.brand.update({
+        ...omitEmptyStrings(form),
+        mapEmbedUrl: form.mapEmbedUrl,
+        googleNewsUrl: form.googleNewsUrl ?? "",
+      });
       setForm(updated);
       setSaved(true);
     } catch (e) {
@@ -148,6 +152,12 @@ export default function BrandSettingsPage() {
                 </CmsField>
                 <CmsField label="YouTube">
                   <CmsInput value={form.youtubeUrl ?? ""} onChange={(e) => set("youtubeUrl", e.target.value)} placeholder="https://youtube.com/..." />
+                </CmsField>
+                <CmsField label="Google News (Takip Et butonu)">
+                  <CmsInput value={form.googleNewsUrl ?? ""} onChange={(e) => set("googleNewsUrl", e.target.value)} placeholder="https://news.google.com/publications/..." />
+                  <p className="m-0 mt-1.5 text-[12px] text-muted-2" style={{ fontFamily: "var(--font-public-sans)" }}>
+                    Haber sayfasında “Google News’te Takip Et” butonu olarak görünür. https ile başlamalıdır. Boş bırakılırsa buton gösterilmez.
+                  </p>
                 </CmsField>
               </div>
             </CmsCard>

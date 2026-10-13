@@ -149,6 +149,7 @@ export type BrandSettings = {
   twitterUrl: string | null;
   instagramUrl: string | null;
   youtubeUrl: string | null;
+  googleNewsUrl: string | null;
   primaryColor: string;
   secondaryColor: string;
   accentColor: string;
