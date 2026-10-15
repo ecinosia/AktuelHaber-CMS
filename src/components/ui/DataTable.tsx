@@ -2,6 +2,8 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { usePersistedPageSize } from "@/lib/use-persisted-page-size";
 import { Search, SlidersHorizontal } from "lucide-react";
 import { useConfirm } from "@/components/providers/ConfirmProvider";
 
@@ -153,7 +155,7 @@ export function DataTable<T extends { id: string; status?: string }>({
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<1 | -1>(1);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[0]);
+  const [pageSize, setPageSize] = usePersistedPageSize(`table:${usePathname()}`, PAGE_SIZE_OPTIONS[0]); // remembered per list page
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [filtersOpen, setFiltersOpen] = useState(true);
   const confirmDialog = useConfirm();

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { publicUrlFor } from "@/lib/forms";
+import { usePersistedPageSize } from "@/lib/use-persisted-page-size";
 import { DataTable } from "@/components/ui/DataTable";
 import { PageContainer } from "@/components/ui/PageContainer";
 import { type SourceFilterValue } from "@/components/ui/SourceFilter";
@@ -90,7 +91,7 @@ function ArticlesContent() {
   const [q, setQ] = useState("");
   const [tab, setTab] = useState(initialStatus);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
+  const [pageSize, setPageSize, sizeReady] = usePersistedPageSize("articles", 25); // remembered across edit pages and visits
   const [total, setTotal] = useState(0);
   const [reload, setReload] = useState(0);
   // Any filter, search, tab or sort change goes back to page 1 (React batches this with the change itself: one request).
@@ -104,6 +105,7 @@ function ArticlesContent() {
   // The title search waits 300 ms after the last keystroke; an answer that arrives after a newer request is ignored.
   useEffect(() => {
     let current = true;
+    if (!sizeReady) return; // wait for the saved page size, so the list is fetched once, not at 25 and again at 100
     const [sortBy, sortDir] = sort.split("_") as ["date" | "title" | "views", "asc" | "desc"];
     const timer = setTimeout(() => {
       setLoading(true);
@@ -134,7 +136,7 @@ function ArticlesContent() {
       current = false;
       clearTimeout(timer);
     };
-  }, [page, pageSize, q, tab, categoryId, authorId, placement, source, sort, reload]);
+  }, [page, pageSize, sizeReady, q, tab, categoryId, authorId, placement, source, sort, reload]);
 
   async function handleDelete(id: string) {
     await api.articles.remove(id);

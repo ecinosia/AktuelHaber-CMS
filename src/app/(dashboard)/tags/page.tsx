@@ -5,18 +5,20 @@ import { api } from "@/lib/api";
 import { DataTable } from "@/components/ui/DataTable";
 import { PageContainer } from "@/components/ui/PageContainer";
 import type { Tag } from "@/types";
+import { usePersistedPageSize } from "@/lib/use-persisted-page-size";
 
 export default function TagsPage() {
   const [items, setItems] = useState<Tag[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25); // one of the table's page-size options
+  const [pageSize, setPageSize, sizeReady] = usePersistedPageSize("tags", 25); // remembered; one of the table's page-size options
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(true);
   // Only the newest request may write the table: a slow earlier page must not overwrite it.
   const latest = useRef(0);
 
   useEffect(() => {
+    if (!sizeReady) return;
     const ticket = ++latest.current;
     setLoading(true);
     const timer = setTimeout(() => {
@@ -32,7 +34,7 @@ export default function TagsPage() {
         });
     }, q ? 300 : 0); // debounce typing, but page clicks answer at once
     return () => clearTimeout(timer);
-  }, [page, pageSize, q]);
+  }, [page, pageSize, sizeReady, q]);
 
   async function handleDelete(id: string) {
     await api.tags.remove(id);
