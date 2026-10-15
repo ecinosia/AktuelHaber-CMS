@@ -105,6 +105,9 @@ export const api = {
       apiFetch<{ email: string; role: string }>("/auth/login", withBody("POST", { username, password, remember })),
     forgotPassword: (email: string) =>
       apiFetch<{ success: boolean }>("/auth/forgot-password", withBody("POST", { email })),
+    /** Finishes a reset started from the mailed link: the signed token from the link + the new password. */
+    completePasswordReset: (token: string, password: string) =>
+      apiFetch<{ success: boolean }>("/auth/reset-password", withBody("POST", { token, password })),
     changePassword: (currentPassword: string, newPassword: string) =>
       apiFetch<{ success: boolean }>("/auth/change-password", withBody("POST", { currentPassword, newPassword })),
     logout: () => apiFetch<{ success: boolean }>("/auth/logout", { method: "POST" }),
