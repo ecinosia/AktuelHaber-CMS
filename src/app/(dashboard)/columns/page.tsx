@@ -59,7 +59,13 @@ export default function ColumnsPage() {
     const prev = items.find((c) => c.id === id)?.status;
     setItems((all) => all.map((c) => (c.id === id ? { ...c, status: next } : c)));
     try {
-      await api.columns.update(id, { status: next });
+      // Columns have no admin direct-publish: a PATCH to "Yayında" only submits for review, so a pending
+      // column is published through the approve endpoint, exactly like the review queue does it.
+      const saved = prev === "PENDING_REVIEW" && next === "PUBLISHED"
+        ? await api.columns.approve(id)
+        : await api.columns.update(id, { status: next });
+      // Show what the server decided (e.g. a future time makes approval "Zamanlanmış"), not what was asked for.
+      setItems((all) => all.map((c) => (c.id === id ? { ...c, status: saved.status } : c)));
     } catch {
       setItems((all) => all.map((c) => (c.id === id ? { ...c, status: prev ?? c.status } : c)));
     }
