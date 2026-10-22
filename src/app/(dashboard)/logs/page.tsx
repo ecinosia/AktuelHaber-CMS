@@ -32,7 +32,6 @@ const ACTIONS: Record<string, string[]> = {
   ad: ["created", "edited", "removed"],
   popup: ["created", "edited", "removed"],
   video: ["created", "edited", "removed"],
-  newspaper: ["edited"],
   user: ["created", "edited", "removed", "logged_in", "password_reset"],
   setting: ["changed"],
 };

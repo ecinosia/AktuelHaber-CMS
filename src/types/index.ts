@@ -260,14 +260,6 @@ export type Video = {
   publishedAt: string;
 };
 
-export type Newspaper = {
-  id: string;
-  name: string;
-  coverImage: string;
-  date: string;
-  active: boolean;
-};
-
 export type FootballStanding = {
   id: string;
   matchweek: number;

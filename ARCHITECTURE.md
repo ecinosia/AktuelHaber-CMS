@@ -25,7 +25,6 @@ src/
       prayer-times/             Namaz vakitleri girişi (per city/date)
       pharmacies/                 Nöbetçi eczane girişi (per district/date)
       video-gallery/              Video haber CRUD
-      newspapers/                Gazete kapağı upload
       football/                   Süper Lig puan durumu girişi
       menu/                       Header/footer menü öğeleri
       ads/                        Reklam banner slot yönetimi

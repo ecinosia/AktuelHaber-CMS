@@ -119,10 +119,6 @@ const ALL_NAV: NavGroup[] = [
           { href: "/video-gallery/new", label: "Video Ekle" },
         ],
       },
-      {
-        label: "Gazeteler",
-        children: [{ href: "/newspapers", label: "Tüm Gazeteler" }],
-      },
     ],
   },
   {

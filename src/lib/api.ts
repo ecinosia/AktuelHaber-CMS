@@ -21,7 +21,6 @@ import type {
   MenuItem,
   MenuLocation,
   MenuStatus,
-  Newspaper,
   Paginated,
   Pharmacy,
   Popup,
@@ -97,7 +96,7 @@ export type MenuInput = {
   items: { label: string; url: string }[];
 };
 
-export type MediaUploadKind = "article" | "avatar" | "logo" | "banner" | "content" | "newspaper" | "video";
+export type MediaUploadKind = "article" | "avatar" | "logo" | "banner" | "content" | "video";
 
 export const api = {
   auth: {
@@ -329,12 +328,6 @@ export const api = {
     update: (id: string, dto: Partial<{ title: string; videoUrl: string; thumbnailUrl: string }>) =>
       apiFetch<Video>(`/video-gallery/${id}`, withBody("PATCH", dto)),
     remove: (id: string) => apiFetch<void>(`/video-gallery/${id}`, { method: "DELETE" }),
-  },
-
-  newspapers: {
-    list: () => apiFetch<Newspaper[]>("/newspapers/admin"),
-    setActive: (id: string, active: boolean) =>
-      apiFetch<Newspaper>(`/newspapers/${id}/active`, withBody("PATCH", { active })),
   },
 
   football: {
