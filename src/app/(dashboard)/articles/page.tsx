@@ -258,7 +258,7 @@ function ArticlesContent() {
               <div className="min-w-0">
                 <Link
                   href={`/articles/${row.id}`}
-                  className="text-[13px] font-bold font-archivo text-ink hover:text-primary line-clamp-1"
+                  className="text-[13px] font-bold font-archivo text-ink hover:text-primary break-words"
                 >
                   {row.title}
                 </Link>

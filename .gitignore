@@ -8,3 +8,7 @@ out
 *.tsbuildinfo
 .env.*
 !.env.example
+/gorseller
+KULLANIM-KILAVUZU-gorselsiz.pdf
+KULLANIM-KILAVUZU.md
+KULLANIM-KILAVUZU.pdf

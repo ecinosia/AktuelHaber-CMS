@@ -10,6 +10,7 @@ import Highlight from "@tiptap/extension-highlight";
 import Placeholder from "@tiptap/extension-placeholder";
 import { Table, TableRow, TableHeader, TableCell } from "@tiptap/extension-table";
 import { useEffect, useCallback, useRef, useState } from "react";
+import { SocialEmbed, parseEmbedUrl } from "./social-embed";
 import {
   Bold,
   Italic,
@@ -32,6 +33,7 @@ import {
   Redo2,
   Minus,
   Table2,
+  Share2,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import type { Editor } from "@tiptap/react";
@@ -120,6 +122,7 @@ export function RichTextEditor({ value, onChange, placeholder = "İçeriği bura
       TableRow,
       TableHeader,
       TableCell,
+      SocialEmbed,
       Placeholder.configure({ placeholder }),
     ],
     content: value || "",
@@ -130,7 +133,16 @@ export function RichTextEditor({ value, onChange, placeholder = "İçeriği bura
       attributes: {
         class: "focus:outline-none",
       },
-      handlePaste: (_view, event) => {
+      handlePaste: (view, event) => {
+        // A supported link pasted into an empty line becomes the embed directly.
+        const text = event.clipboardData?.getData("text/plain").trim() ?? "";
+        const { $from } = view.state.selection;
+        const embed = text && !/\s/.test(text) && $from.parent.isTextblock && $from.parent.content.size === 0 ? parseEmbedUrl(text) : null;
+        if (embed) {
+          event.preventDefault();
+          editorRef.current?.chain().focus().insertContent({ type: "socialEmbed", attrs: embed }).run();
+          return true;
+        }
         const html = event.clipboardData?.getData("text/html");
         if (!STORAGE_PUBLIC_URL || !html || !html.includes(STORAGE_PUBLIC_URL)) return false;
         event.preventDefault();
@@ -159,6 +171,18 @@ export function RichTextEditor({ value, onChange, placeholder = "İçeriği bura
       return;
     }
     editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
+  }, [editor]);
+
+  const addEmbed = useCallback(() => {
+    if (!editor) return;
+    const input = window.prompt("YouTube, X, Instagram veya Facebook paylaşım bağlantısını girin:");
+    if (!input) return;
+    const embed = parseEmbedUrl(input);
+    if (!embed) {
+      window.alert("Bu bağlantı desteklenmiyor. Bir YouTube videosu, X (tweet), Instagram veya Facebook paylaşım bağlantısı girin.");
+      return;
+    }
+    editor.chain().focus().insertContent({ type: "socialEmbed", attrs: embed }).run();
   }, [editor]);
 
   async function handleImageSelected(event: React.ChangeEvent<HTMLInputElement>) {
@@ -262,6 +286,11 @@ export function RichTextEditor({ value, onChange, placeholder = "İçeriği bura
         {/* Table */}
         <ToolbarButton title="Tablo Ekle (3x3)" active={editor.isActive("table")} onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}>
           <Table2 className="h-4 w-4" />
+        </ToolbarButton>
+
+        {/* Social embed */}
+        <ToolbarButton title="Gömülü İçerik (YouTube, X, Instagram, Facebook)" active={editor.isActive("socialEmbed")} onClick={addEmbed}>
+          <Share2 className="h-4 w-4" />
         </ToolbarButton>
 
         {/* Image */}
