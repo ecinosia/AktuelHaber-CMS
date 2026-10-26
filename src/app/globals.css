@@ -72,7 +72,7 @@
 }
 .social-embed-card { @apply my-3 flex flex-col gap-0.5 rounded-lg border border-dashed border-line-strong bg-gray-50 px-4 py-3 text-sm text-gray-700 cursor-grab; }
 .social-embed-card span { @apply break-all text-xs text-muted; }
-.tiptap-editor .ProseMirror .ProseMirror-selectednode.social-embed-card { @apply border-primary bg-primary-light/40; }
+.tiptap-editor .ProseMirror .ProseMirror-selectednode.social-embed-card { @apply border-primary bg-primary-light; }
 .tiptap-editor .ProseMirror a { @apply text-primary underline underline-offset-2; }
 .tiptap-editor .ProseMirror mark { @apply bg-yellow-200 rounded px-0.5; }
 .tiptap-editor .ProseMirror strong { @apply font-semibold; }
