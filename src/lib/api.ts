@@ -394,11 +394,7 @@ export type ArticleWritePayload = {
 export type ColumnWritePayload = {
   slug: string;
   title: string;
-  spot?: string;
   content: string;
-  coverImageUrl?: string;
-  coverImageCardUrl?: string;
-  coverImageAlt?: string;
   noIndex?: boolean;
   commentsEnabled?: boolean;
   status?: ArticleStatus;

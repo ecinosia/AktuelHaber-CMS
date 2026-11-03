@@ -103,11 +103,7 @@ export type Column = {
   legacyPath: string | null;
   legacySourceId: string | null;
   title: string;
-  spot: string | null;
   content: string;
-  coverImageUrl: string | null;
-  coverImageCardUrl: string | null;
-  coverImageAlt: string | null;
   noIndex: boolean;
   commentsEnabled: boolean;
   status: ArticleStatus;

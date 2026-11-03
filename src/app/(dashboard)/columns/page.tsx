@@ -167,8 +167,6 @@ export default function ColumnsPage() {
         addLabel="Yazı Ekle"
         searchPlaceholder="Yazı başlığı ara..."
         statusTabs={STATUS_TABS}
-        showThumbnail
-        thumbnailKey="coverImageUrl"
         loading={loading}
         emptyText="Henüz köşe yazısı eklenmemiş."
         editHref={(row) => `/columns/${row.id}`}

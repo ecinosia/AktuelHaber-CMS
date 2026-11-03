@@ -32,8 +32,8 @@ const fromColumn = (c: Column): QueueItem => ({
   title: c.title,
   href: `/columns/${c.id}`,
   meta: `${c.author.firstName} ${c.author.lastName} · Köşe yazısı · ${new Date(c.createdAt).toLocaleDateString("tr-TR")}`,
-  spot: c.spot,
-  coverImageUrl: c.coverImageUrl,
+  spot: null,
+  coverImageUrl: c.author.avatarUrl, // columns have no cover; the author stands in, as on the public share card
 });
 
 export default function ReviewQueuePage() {

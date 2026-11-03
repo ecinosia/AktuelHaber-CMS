@@ -7,20 +7,20 @@ import { Save, Loader2, AlertCircle } from "lucide-react";
 import { api, ApiError, type ColumnWritePayload } from "@/lib/api";
 import { omitEmptyStrings } from "@/lib/forms";
 import type { Author, Column, ArticleStatus } from "@/types";
-import { ImageUpload } from "@/components/ui/ImageUpload";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
-import { CmsCard, CmsField, CmsInput, CmsSelect, CmsTextarea } from "@/components/ui/CmsCard";
+import { CmsCard, CmsField, CmsInput, CmsSelect } from "@/components/ui/CmsCard";
 import { Toggle } from "@/components/ui/Toggle";
 
+// No spot or cover image: a column's share image is its author's avatar.
 type FormState = {
-  slug: string; title: string; spot: string; content: string;
-  coverImageUrl: string; coverImageCardUrl: string; coverImageAlt: string; noIndex: boolean; commentsEnabled: boolean;
+  slug: string; title: string; content: string;
+  noIndex: boolean; commentsEnabled: boolean;
   status: ArticleStatus; scheduledAt: string; authorId: string;
 };
 
 const EMPTY: FormState = {
-  slug: "", title: "", spot: "", content: "",
-  coverImageUrl: "", coverImageCardUrl: "", coverImageAlt: "", noIndex: false, commentsEnabled: true,
+  slug: "", title: "", content: "",
+  noIndex: false, commentsEnabled: true,
   status: "DRAFT", scheduledAt: "", authorId: "",
 };
 
@@ -67,8 +67,7 @@ function generateSlug(title: string): string {
 
 function toForm(c: Column): FormState {
   return {
-    slug: c.slug, title: c.title, spot: c.spot ?? "", content: c.content,
-    coverImageUrl: c.coverImageUrl ?? "", coverImageCardUrl: c.coverImageCardUrl ?? "", coverImageAlt: c.coverImageAlt ?? "",
+    slug: c.slug, title: c.title, content: c.content,
     noIndex: c.noIndex, commentsEnabled: c.commentsEnabled,
     status: c.status,
     scheduledAt: c.scheduledAt ? c.scheduledAt.slice(0, 16) : "",
@@ -105,9 +104,6 @@ export function ColumnForm({ column }: { column?: Column }) {
     const errors: Record<string, string> = {};
     if (!form.title.trim()) errors.title = "Başlık zorunludur.";
     if (!form.slug.trim()) errors.slug = "Slug zorunludur.";
-    if (!form.spot.trim()) errors.spot = "Spot zorunludur.";
-    if (!form.coverImageUrl) errors.coverImageUrl = "Kapak görseli zorunludur.";
-    if (form.coverImageUrl && !form.coverImageAlt.trim()) errors.coverImageAlt = "Görsel alt metni zorunludur.";
     if (!form.content.replace(/<[^>]+>/g, "").trim()) errors.content = "İçerik zorunludur.";
     if (!form.authorId) errors.authorId = "Yazar seçin.";
     return errors;
@@ -126,7 +122,7 @@ export function ColumnForm({ column }: { column?: Column }) {
     const { scheduledAt, ...rest } = form;
     const payload: ColumnWritePayload = {
       ...omitEmptyStrings(rest),
-      slug: form.slug, title: form.title, spot: form.spot, content: form.content, authorId: form.authorId,
+      slug: form.slug, title: form.title, content: form.content, authorId: form.authorId,
       scheduledAt: form.status === "SCHEDULED" && scheduledAt ? new Date(scheduledAt).toISOString() : undefined,
     };
     try {
@@ -187,10 +183,6 @@ export function ColumnForm({ column }: { column?: Column }) {
                 <FieldError message={fieldErrors.slug} />
               </CmsField>
             </div>
-            <CmsField label="Spot (Özet)*">
-              <CmsTextarea required className={fieldErrors.spot ? "cms-input-error" : undefined} rows={2} value={form.spot} onChange={(e) => set("spot", e.target.value)} placeholder="Kısa özet..." />
-              <FieldError message={fieldErrors.spot} />
-            </CmsField>
           </CmsCard>
 
           {/* Content / Rich text editor */}
@@ -203,20 +195,6 @@ export function ColumnForm({ column }: { column?: Column }) {
               />
             </div>
             <FieldError message={fieldErrors.content} />
-          </CmsCard>
-
-          {/* Cover image */}
-          <CmsCard title="Kapak Görseli*">
-            <div className={fieldErrors.coverImageUrl ? "rounded-lg ring-1 ring-down" : undefined}>
-              <ImageUpload kind="article" value={form.coverImageUrl} onChange={(url) => set("coverImageUrl", url)} onCardChange={(url) => set("coverImageCardUrl", url)} />
-            </div>
-            <FieldError message={fieldErrors.coverImageUrl} />
-            {form.coverImageUrl && (
-              <CmsField label="Görsel Alt Metni*">
-                <CmsInput className={fieldErrors.coverImageAlt ? "cms-input-error" : undefined} value={form.coverImageAlt} onChange={(e) => set("coverImageAlt", e.target.value)} placeholder="Görseli tanımlayan kısa metin" />
-                <FieldError message={fieldErrors.coverImageAlt} />
-              </CmsField>
-            )}
           </CmsCard>
         </div>
 
