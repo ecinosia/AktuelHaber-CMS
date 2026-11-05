@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { publicUrlFor } from "@/lib/forms";
 import { DataTable } from "@/components/ui/DataTable";
+import { usePersistedPageSize } from "@/lib/use-persisted-page-size";
 import { PageContainer } from "@/components/ui/PageContainer";
 import type { Comment, CommentStatus } from "@/types";
 
@@ -51,39 +52,49 @@ export default function CommentsPage() {
   const [loading, setLoading] = useState(true);
   const [type, setType] = useState("");
   const [sort, setSort] = useState<SortValue>("date_desc");
+  const [q, setQ] = useState("");
+  const [tab, setTab] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize, sizeReady] = usePersistedPageSize("comments", 25);
+  const [total, setTotal] = useState(0);
+  const [reload, setReload] = useState(0);
+  const change = <V,>(set: (v: V) => void) => (v: V) => { set(v); setPage(1); };
 
-  function reload() {
-    return api.comments.list({ pageSize: 200 }).then((r) => setItems(r.items));
-  }
-
+  // Filtered, sorted and paged on the server (like Haberler), so every comment is reachable - not only the newest 200.
   useEffect(() => {
-    reload().finally(() => setLoading(false));
-  }, []);
+    let current = true;
+    if (!sizeReady) return;
+    const [sortBy, sortDir] = sort.split("_") as ["date" | "author", "asc" | "desc"];
+    const timer = setTimeout(() => {
+      setLoading(true);
+      api.comments
+        .list({ page, pageSize, q, status: (tab || undefined) as CommentStatus | undefined, type: (type || undefined) as "article" | "column" | undefined, sortBy, sortDir })
+        .then((r) => {
+          if (!current) return;
+          setItems(r.items);
+          setTotal(r.total);
+        })
+        .catch(() => undefined)
+        .finally(() => {
+          if (current) setLoading(false);
+        });
+    }, q ? 300 : 0);
+    return () => {
+      current = false;
+      clearTimeout(timer);
+    };
+  }, [page, pageSize, sizeReady, q, tab, type, sort, reload]);
 
   async function handleAction(id: string, action: (typeof STATUS_ACTION)[ModeratedStatus]) {
     await api.comments[action](id);
-    await reload();
+    setReload((n) => n + 1);
   }
 
   async function handleDelete(id: string) {
     await api.comments.remove(id);
     setItems((prev) => prev.filter((c) => c.id !== id));
+    setReload((n) => n + 1);
   }
-
-  const filtered = items
-    .filter((c) => !type || (type === "article" ? !!c.article : !!c.column))
-    .sort((a, b) => {
-      switch (sort) {
-        case "author_asc":
-          return a.authorName.localeCompare(b.authorName, "tr");
-        case "author_desc":
-          return b.authorName.localeCompare(a.authorName, "tr");
-        case "date_asc":
-          return +new Date(a.createdAt) - +new Date(b.createdAt);
-        default:
-          return +new Date(b.createdAt) - +new Date(a.createdAt);
-      }
-    });
 
   return (
     <PageContainer>
@@ -94,12 +105,12 @@ export default function CommentsPage() {
       <DataTable<Comment>
         filterBar={
           <>
-            <select value={type} onChange={(e) => setType(e.target.value)} className={fieldCls}>
+            <select value={type} onChange={(e) => change(setType)(e.target.value)} className={fieldCls}>
               {TYPE_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}
             </select>
-            <select value={sort} onChange={(e) => setSort(e.target.value as SortValue)} className={fieldCls}>
+            <select value={sort} onChange={(e) => change(setSort)(e.target.value as SortValue)} className={fieldCls}>
               {SORT_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}
@@ -109,6 +120,7 @@ export default function CommentsPage() {
               onClick={() => {
                 setType("");
                 setSort("date_desc");
+                setPage(1);
               }}
               className="ml-auto px-5 py-1.5 border border-line-strong bg-primary text-[12px] font-bold font-archivo text-white rounded-md hover:bg-primary-hover transition-colors"
             >
@@ -172,9 +184,11 @@ export default function CommentsPage() {
             ),
           },
         ]}
-        rows={filtered}
+        rows={items}
         searchPlaceholder="Yorum veya yazar ara..."
+        onSearchChange={(v) => { setQ(v); setPage(1); }}
         statusTabs={STATUS_TABS}
+        server={{ total, page, pageSize, activeTab: tab, onTabChange: change(setTab), onPageChange: setPage, onPageSizeChange: (n) => { setPageSize(n); setPage(1); } }}
         loading={loading}
         emptyText="Yorum bulunamadı."
         onDelete={handleDelete}

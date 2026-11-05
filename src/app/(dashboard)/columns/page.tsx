@@ -5,6 +5,7 @@ import Link from "next/link";
 import { api } from "@/lib/api";
 import { publicUrlFor } from "@/lib/forms";
 import { DataTable } from "@/components/ui/DataTable";
+import { usePersistedPageSize } from "@/lib/use-persisted-page-size";
 import { PageContainer } from "@/components/ui/PageContainer";
 import type { Column, ArticleStatus, Author } from "@/types";
 
@@ -42,17 +43,47 @@ export default function ColumnsPage() {
   const [authors, setAuthors] = useState<Author[]>([]);
   const [authorId, setAuthorId] = useState("");
   const [sort, setSort] = useState<SortValue>("date_desc");
+  const [q, setQ] = useState("");
+  const [tab, setTab] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize, sizeReady] = usePersistedPageSize("columns", 25);
+  const [total, setTotal] = useState(0);
+  const [reload, setReload] = useState(0);
+  // Any filter, search, tab or sort change goes back to page 1.
+  const change = <V,>(set: (v: V) => void) => (v: V) => { set(v); setPage(1); };
 
   useEffect(() => {
-    api.columns.adminList({ pageSize: 200 }).then((r) => {
-      setItems(r.items as ColumnRow[]);
-    }).finally(() => setLoading(false));
     api.authors.list().then(setAuthors);
   }, []);
+  // Same as the Haberler list: filtered, sorted and paged on the server, so every column is reachable (no 200 cap).
+  useEffect(() => {
+    let current = true;
+    if (!sizeReady) return;
+    const [sortBy, sortDir] = sort.split("_") as ["date" | "title" | "views", "asc" | "desc"];
+    const timer = setTimeout(() => {
+      setLoading(true);
+      api.columns
+        .adminList({ page, pageSize, q, status: (tab || undefined) as ArticleStatus | undefined, authorId: authorId || undefined, sortBy, sortDir })
+        .then((r) => {
+          if (!current) return;
+          setItems(r.items as ColumnRow[]);
+          setTotal(r.total);
+        })
+        .catch(() => undefined)
+        .finally(() => {
+          if (current) setLoading(false);
+        });
+    }, q ? 300 : 0);
+    return () => {
+      current = false;
+      clearTimeout(timer);
+    };
+  }, [page, pageSize, sizeReady, q, tab, authorId, sort, reload]);
 
   async function handleDelete(id: string) {
     await api.columns.remove(id);
     setItems((prev) => prev.filter((c) => c.id !== id));
+    setReload((n) => n + 1); // refill the page and the total from the server
   }
 
   async function handleStatusChange(id: string, next: ArticleStatus) {
@@ -71,20 +102,6 @@ export default function ColumnsPage() {
     }
   }
 
-  const time = (c: ColumnRow) => new Date(c.publishedAt ?? c.createdAt).getTime();
-  const filtered = items
-    .filter((c) => !authorId || c.authorId === authorId)
-    .sort((a, b) => {
-      switch (sort) {
-        case "title_asc": return a.title.localeCompare(b.title, "tr");
-        case "title_desc": return b.title.localeCompare(a.title, "tr");
-        case "views_asc": return a.viewCount - b.viewCount;
-        case "views_desc": return b.viewCount - a.viewCount;
-        case "date_asc": return time(a) - time(b);
-        default: return time(b) - time(a);
-      }
-    });
-
   const selectCls = "px-3 py-1.5 border border-line-strong rounded-md text-[12px] text-body";
 
   return (
@@ -96,20 +113,20 @@ export default function ColumnsPage() {
       <DataTable<ColumnRow>
         filterBar={
           <>
-            <select value={authorId} onChange={(e) => setAuthorId(e.target.value)} className={selectCls}>
+            <select value={authorId} onChange={(e) => change(setAuthorId)(e.target.value)} className={selectCls}>
               <option value="">Tüm Yazarlar</option>
               {authors.map((a) => (
                 <option key={a.id} value={a.id}>{a.firstName} {a.lastName}</option>
               ))}
             </select>
-            <select value={sort} onChange={(e) => setSort(e.target.value as SortValue)} className={selectCls}>
+            <select value={sort} onChange={(e) => change(setSort)(e.target.value as SortValue)} className={selectCls}>
               {SORT_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}
             </select>
             <button
               type="button"
-              onClick={() => { setAuthorId(""); setSort("date_desc"); }}
+              onClick={() => { setAuthorId(""); setSort("date_desc"); setPage(1); }}
               className="ml-auto px-5 py-1.5 border border-line-strong bg-primary text-[12px] font-bold font-archivo text-white rounded-md hover:bg-primary-hover transition-colors"
             >
               Filtreyi Temizle
@@ -162,11 +179,13 @@ export default function ColumnsPage() {
             ),
           },
         ]}
-        rows={filtered}
+        rows={items}
         addHref="/columns/new"
         addLabel="Yazı Ekle"
         searchPlaceholder="Yazı başlığı ara..."
+        onSearchChange={(v) => { setQ(v); setPage(1); }}
         statusTabs={STATUS_TABS}
+        server={{ total, page, pageSize, activeTab: tab, onTabChange: change(setTab), onPageChange: setPage, onPageSizeChange: (n) => { setPageSize(n); setPage(1); } }}
         loading={loading}
         emptyText="Henüz köşe yazısı eklenmemiş."
         editHref={(row) => `/columns/${row.id}`}

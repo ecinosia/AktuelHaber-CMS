@@ -215,6 +215,9 @@ export const api = {
     // Published articles site-wide (not scoped to the caller) — candidates for "related news".
     publishedList: (params: { page?: number; pageSize?: number } = {}) =>
       apiFetch<Paginated<Article>>(`/articles${buildQuery(params)}`),
+    // Full-text search over ALL published articles and columns (the public /search, GIN-indexed).
+    search: (q: string, pageSize = 30) =>
+      apiFetch<Paginated<{ id: string; title: string; kind: "article" | "column" }>>(`/search${buildQuery({ q, pageSize })}`),
     reviewQueue: () => apiFetch<Article[]>("/articles/review-queue"),
     byId: (id: string) => apiFetch<Article>(`/articles/id/${id}`),
     create: (dto: ArticleWritePayload) => apiFetch<Article>("/articles", withBody("POST", dto)),
@@ -226,8 +229,15 @@ export const api = {
   },
 
   columns: {
-    adminList: (params: { status?: ArticleStatus; authorId?: string; page?: number; pageSize?: number } = {}) =>
-      apiFetch<Paginated<Column>>(`/columns/admin${buildQuery(params)}`),
+    adminList: (params: {
+      status?: ArticleStatus;
+      authorId?: string;
+      q?: string;
+      sortBy?: "date" | "title" | "views";
+      sortDir?: "asc" | "desc";
+      page?: number;
+      pageSize?: number;
+    } = {}) => apiFetch<Paginated<Column>>(`/columns/admin${buildQuery(params)}`),
     byId: (id: string) => apiFetch<Column>(`/columns/id/${id}`),
     bySlug: (slug: string) => apiFetch<Column>(`/columns/slug/${slug}`),
     create: (dto: ColumnWritePayload) => apiFetch<Column>("/columns", withBody("POST", dto)),
@@ -240,8 +250,16 @@ export const api = {
   },
 
   comments: {
-    list: (params: { articleId?: string; status?: CommentStatus; page?: number; pageSize?: number } = {}) =>
-      apiFetch<Paginated<Comment>>(`/comments${buildQuery(params)}`),
+    list: (params: {
+      articleId?: string;
+      status?: CommentStatus;
+      q?: string;
+      type?: "article" | "column";
+      sortBy?: "date" | "author";
+      sortDir?: "asc" | "desc";
+      page?: number;
+      pageSize?: number;
+    } = {}) => apiFetch<Paginated<Comment>>(`/comments${buildQuery(params)}`),
     approve: (id: string) => apiFetch<Comment>(`/comments/${id}/approve`, { method: "POST" }),
     reject: (id: string) => apiFetch<Comment>(`/comments/${id}/reject`, { method: "POST" }),
     markSpam: (id: string) => apiFetch<Comment>(`/comments/${id}/spam`, { method: "POST" }),
@@ -322,7 +340,8 @@ export const api = {
   },
 
   videoGallery: {
-    list: (page = 1, pageSize = 50) => apiFetch<Paginated<Video>>(`/video-gallery${buildQuery({ page, pageSize })}`),
+    list: (page = 1, pageSize = 50, q?: string) => apiFetch<Paginated<Video>>(`/video-gallery${buildQuery({ page, pageSize, q })}`),
+    byId: (id: string) => apiFetch<Video>(`/video-gallery/${id}`),
     create: (dto: { title: string; videoUrl: string; thumbnailUrl?: string }) =>
       apiFetch<Video>("/video-gallery", withBody("POST", dto)),
     update: (id: string, dto: Partial<{ title: string; videoUrl: string; thumbnailUrl: string }>) =>

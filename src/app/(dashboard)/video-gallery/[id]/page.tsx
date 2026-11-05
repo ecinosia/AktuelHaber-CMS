@@ -14,9 +14,8 @@ export default function EditVideoPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.videoGallery.list(1, 200).then((r) => {
-      setVideo(r.items.find((v) => v.id === id) ?? null);
-    }).finally(() => setLoading(false));
+    // By id: the old "load the newest 200 and search them" could not open an older video at all.
+    api.videoGallery.byId(id).then(setVideo).catch(() => setVideo(null)).finally(() => setLoading(false));
   }, [id]);
 
   if (loading) return <PageContainer><div className="h-10 rounded-lg bg-surface animate-pulse" /></PageContainer>;

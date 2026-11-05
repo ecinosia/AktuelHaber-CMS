@@ -182,7 +182,9 @@ export function ArticleForm({ article }: { article?: Article }) {
   );
   const [categories, setCategories] = useState<Category[]>([]);
   const [authors, setAuthors] = useState<Author[]>([]);
-  const [relatedCandidates, setRelatedCandidates] = useState<Article[]>([]);
+  const [relatedCandidates, setRelatedCandidates] = useState<Array<{ id: string; title: string }>>([]);
+  // Every candidate seen so far (newest list + search results), so a pinned article stays visible after a new search.
+  const [knownRelated, setKnownRelated] = useState<Map<string, string>>(new Map());
   const [relatedFilter, setRelatedFilter] = useState("");
   const [canPublish, setCanPublish] = useState(false);
   const [selectedTags, setSelectedTags] = useState<Tag[]>(article?.tags ?? []);
@@ -240,10 +242,31 @@ export function ArticleForm({ article }: { article?: Article }) {
     api.categories.list().then(setCategories);
     api.authors.list().then(setAuthors);
     api.auth.me().then((s) => setCanPublish(s.canPublish)).catch(() => undefined);
-    api.articles
-      .publishedList({ pageSize: 100 })
-      .then((r) => setRelatedCandidates(r.items));
   }, []);
+  // Related-news candidates: the newest 100 while the search box is empty; with 2+ letters a server search over ALL
+  // published articles (the old picker only filtered the newest 100, so an older article could never be linked).
+  useEffect(() => {
+    let current = true;
+    const term = relatedFilter.trim();
+    const timer = setTimeout(() => {
+      const request =
+        term.length >= 2
+          ? api.articles.search(term).then((r) => r.items.filter((i) => i.kind === "article"))
+          : api.articles.publishedList({ pageSize: 100 }).then((r) => r.items);
+      request
+        .then((items) => {
+          if (!current) return;
+          const rows = items.map((i) => ({ id: i.id, title: i.title }));
+          setRelatedCandidates(rows);
+          setKnownRelated((prev) => new Map([...prev, ...rows.map((r) => [r.id, r.title] as [string, string])]));
+        })
+        .catch(() => undefined);
+    }, term.length >= 2 ? 400 : 0);
+    return () => {
+      current = false;
+      clearTimeout(timer);
+    };
+  }, [relatedFilter]);
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -337,10 +360,12 @@ export function ArticleForm({ article }: { article?: Article }) {
   const linkCount = (form.content.match(/<a /g) ?? []).length;
   const headingCount = (form.content.match(/<h[1-6]/g) ?? []).length;
   const readingTime = wordCount ? Math.max(1, Math.ceil(wordCount / 200)) : 0;
-  const filteredRelated = relatedCandidates.filter(
-    (a) =>
-      a.id !== article?.id &&
-      a.title.toLowerCase().includes(relatedFilter.toLowerCase()),
+  // Pinned ones first (titles from any earlier list or search), then the current candidates; the server already matched the search.
+  const pinnedShown = form.pinnedRelatedArticleIds
+    .filter((id) => knownRelated.has(id))
+    .map((id) => ({ id, title: knownRelated.get(id)! }));
+  const filteredRelated = [...pinnedShown, ...relatedCandidates.filter((a) => !form.pinnedRelatedArticleIds.includes(a.id))].filter(
+    (a) => a.id !== article?.id,
   );
 
   return (
