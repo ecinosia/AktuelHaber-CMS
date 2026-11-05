@@ -8,6 +8,7 @@ type ConfirmOptions = {
   message: string;
   confirmLabel?: string;
   cancelLabel?: string;
+  notice?: boolean; // one "Tamam" button: tells the editor something instead of asking
 };
 
 // Accepts a plain string for the common "Bu kayıt silinsin mi?" case, or a
@@ -44,8 +45,8 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
         <ConfirmDialog
           title={options.title ?? "Emin misiniz?"}
           message={options.message}
-          confirmLabel={options.confirmLabel ?? "Sil"}
-          cancelLabel={options.cancelLabel ?? "Vazgeç"}
+          confirmLabel={options.confirmLabel ?? (options.notice ? "Tamam" : "Sil")}
+          cancelLabel={options.notice ? undefined : (options.cancelLabel ?? "Vazgeç")}
           onConfirm={() => settle(true)}
           onCancel={() => settle(false)}
         />

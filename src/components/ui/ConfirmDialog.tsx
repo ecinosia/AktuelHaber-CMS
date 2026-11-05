@@ -6,7 +6,7 @@ export function ConfirmDialog({
   title,
   message,
   confirmLabel = "Onayla",
-  cancelLabel = "Vazgeç",
+  cancelLabel,
   onConfirm,
   onCancel,
 }: {
@@ -38,10 +38,12 @@ export function ConfirmDialog({
         <div className="flex justify-end gap-2.5 mt-1.5">
           {/* Explicit type="button" — this dialog can render inside a <form>
               (see ArticleForm), where a button defaults to type="submit". */}
-          <Button type="button" variant="secondary" onClick={onCancel}>
-            {cancelLabel}
-          </Button>
-          <Button type="button" variant="danger" onClick={onConfirm}>
+          {cancelLabel && (
+            <Button type="button" variant="secondary" onClick={onCancel}>
+              {cancelLabel}
+            </Button>
+          )}
+          <Button type="button" variant={cancelLabel ? "danger" : "primary"} onClick={onConfirm}>
             {confirmLabel}
           </Button>
         </div>

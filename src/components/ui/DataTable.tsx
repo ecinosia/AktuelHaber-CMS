@@ -43,7 +43,7 @@ type Props<T extends { id: string; status?: string }> = {
   loading?: boolean;
   emptyText?: string;
   headerAction?: React.ReactNode;
-  onDelete?: (id: string) => void;
+  onDelete?: (id: string) => void | Promise<void>;
   deleteHint?: string; // appended to the permanent-delete warning, e.g. a reversible alternative
   editHref?: (row: T) => string;
   viewHref?: (row: T) => string;
@@ -219,6 +219,16 @@ export function DataTable<T extends { id: string; status?: string }>({
 
   const allSelected = pageRows.length > 0 && pageRows.every((r) => selected.has(r.id));
 
+  // A refused delete (e.g. an author who still has articles) must reach the editor as a dialog, not the console.
+  async function runDeletes(ids: string[]) {
+    const results = await Promise.allSettled(ids.map(async (id) => onDelete?.(id)));
+    const failed = results.filter((r): r is PromiseRejectedResult => r.status === "rejected");
+    if (!failed.length) return;
+    const reasons = [...new Set(failed.map((r) => (r.reason instanceof Error ? r.reason.message : "Bilinmeyen hata")))];
+    const prefix = ids.length > 1 ? `${failed.length}/${ids.length} kayıt silinemedi. ` : "";
+    await confirmDialog({ title: "Silinemedi", message: prefix + reasons.join(" "), notice: true });
+  }
+
   const showActionCol = editHref || viewHref || onDelete || (actions && actions.length > 0);
   const showStatusCol = !hideStatus && rows.some((r) => r.status !== undefined);
 
@@ -303,8 +313,9 @@ export function DataTable<T extends { id: string; status?: string }>({
             type="button"
             onClick={async () => {
               if (await confirmDialog(deleteMessage(`${selected.size} kayıt`, deleteHint))) {
-                selected.forEach((id) => onDelete(id));
+                const ids = [...selected];
                 setSelected(new Set());
+                await runDeletes(ids);
               }
             }}
             className="text-[12px] font-bold font-archivo text-white bg-down px-3 py-1.5 rounded-md cursor-pointer"
@@ -429,7 +440,7 @@ export function DataTable<T extends { id: string; status?: string }>({
                           <button
                             type="button"
                             onClick={async () => {
-                              if (await confirmDialog(deleteMessage("Bu kayıt", deleteHint))) onDelete(row.id);
+                              if (await confirmDialog(deleteMessage("Bu kayıt", deleteHint))) await runDeletes([row.id]);
                             }}
                             className="w-8 h-8 flex items-center justify-center border border-line-head rounded text-down hover:bg-down-bg transition-colors text-sm cursor-pointer"
                             title="Sil"
