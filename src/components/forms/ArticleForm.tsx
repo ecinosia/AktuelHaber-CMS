@@ -130,19 +130,6 @@ function FieldError({ message }: { message?: string }) {
   );
 }
 
-// Google truncates title tags past ~60 chars and meta descriptions past ~155
-// in search results — this just warns before the editor finds out live.
-function CharCount({ length, max }: { length: number; max: number }) {
-  return (
-    <p
-      className={`text-[12px] m-0 ${length > max ? "text-down" : "text-muted-2"}`}
-      style={{ fontFamily: "var(--font-public-sans)" }}
-    >
-      {length} / {max} karakter{length > max ? " — Google'da kesilebilir" : ""}
-    </p>
-  );
-}
-
 function toForm(a: Article): FormState {
   return {
     slug: a.slug,
@@ -459,7 +446,6 @@ export function ArticleForm({ article }: { article?: Article }) {
                 onChange={(e) => set("metaTitle", e.target.value)}
                 placeholder="Arama motorları için başlık"
               />
-              <CharCount length={form.metaTitle.length} max={60} />
               <FieldError message={fieldErrors.metaTitle} />
             </CmsField>
             <CmsField label="Meta Açıklama*">
@@ -470,7 +456,6 @@ export function ArticleForm({ article }: { article?: Article }) {
                 onChange={(e) => set("metaDescription", e.target.value)}
                 placeholder="Arama motorları için açıklama"
               />
-              <CharCount length={form.metaDescription.length} max={155} />
               <FieldError message={fieldErrors.metaDescription} />
             </CmsField>
             <CmsField
