@@ -141,8 +141,9 @@ function toForm(a: Article): FormState {
     coverImageAlt: a.coverImageAlt ?? "",
     source: a.source ?? "",
     canonicalUrl: a.canonicalUrl ?? "",
-    metaTitle: a.metaTitle ?? "",
-    metaDescription: a.metaDescription ?? "",
+    // Bot-posted articles arrive without meta fields; pre-fill them the way the public site falls back (title / spot).
+    metaTitle: a.metaTitle?.trim() ? a.metaTitle : a.title,
+    metaDescription: a.metaDescription?.trim() ? a.metaDescription : a.spot,
     videoUrl: a.videoUrl ?? "",
     isBreaking: a.isBreaking,
     isFeatured: a.isFeatured,
